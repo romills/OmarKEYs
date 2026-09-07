@@ -154,7 +154,8 @@ moved the sink; the old path returned ok and changed nothing.
 
 - [x] `~/Work/omarkeys` is the deploy slot (plugin symlink). No edits.
 - [x] Per-agent clones: `omarkeys-grok`, `omarkeys-claude`, `omarkeys-cursor`
-- [x] Grok pulls `shared/develop` into this `main`
+- [x] Grok pulls `shared/develop` into OmarKEYs-grok `main`
+- [x] (cursor) Shared-repo clone: `~/Work/omarkeys-cursor`, origin OmarKEYs, work on `develop-cursor`
 
 ### Live reload (was "Later")
 

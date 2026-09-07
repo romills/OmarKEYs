@@ -1,11 +1,11 @@
-# OmarKEYS (Grok)
+# OmarKEYS
 
 A Super+K alternative for [Omarchy](https://omarchy.org/). Topic-organized
 keymap overlay, summoned without eating Super+other shortcuts.
 
-This is **Grok's** line (`main`). Claude and Cursor work on
-https://github.com/romills/OmarKEYs (`develop`). Grok pulls `develop`
-into `main` when that work is ready. Working copy: `~/Work/omarkeys-grok`.
+This is the **shared** Claude/Cursor repo (`develop`). Cursor's working
+copy is `~/Work/omarkeys-cursor` on `develop-cursor`. Grok's released
+line is https://github.com/romills/OmarKEYs-grok (`main`).
 
 **Open**
 

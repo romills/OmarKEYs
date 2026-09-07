@@ -45,17 +45,41 @@ hyprctl configerrors
 
 QML changes need `omarchy restart shell` (keepLoaded overlay).
 
-## Grok's repository
+## Repositories
 
-This clone is **Grok's line** (`~/Work/omarkeys-grok`). Claude and Cursor
-do not commit here.
+This file lives in the **shared** Claude/Cursor repo
+(https://github.com/romills/OmarKEYs). Grok's released line is a separate
+repo (https://github.com/romills/OmarKEYs-grok). Do not treat a shared-repo
+clone as Grok's tree.
 
 | Remote | URL | Role |
 |---|---|---|
-| `origin` | https://github.com/romills/OmarKEYs-grok.git | Grok's repo. `main` is Grok's released/stable line. |
-| `shared` | https://github.com/romills/OmarKEYs.git | Claude/Cursor repo. `develop` is their integration branch. |
+| `origin` | https://github.com/romills/OmarKEYs.git | Shared repo. `develop` is integration; Cursor works on `develop-cursor`. |
+| `grok` (optional) | https://github.com/romills/OmarKEYs-grok.git | Grok's released line. Read-only for Claude and Cursor. |
 
-Grok is the only one who pulls `develop` into `main`:
+## Cursor's clone
+
+Cursor's directory on the Omarchy machine is `~/Work/omarkeys-cursor`.
+Origin is the shared repo above. Do not commit in `~/Work/omarkeys-grok`
+or the deploy slot `~/Work/omarkeys`.
+
+Bootstrap on the Omarchy machine:
+
+```sh
+git clone https://github.com/romills/OmarKEYs.git ~/Work/omarkeys-cursor
+cd ~/Work/omarkeys-cursor
+git checkout develop-cursor
+git pull origin develop-cursor
+```
+
+Cursor commits on `develop-cursor` (or a `cursor/*` feature branch) and
+opens a PR into `develop`. Never push to `main` or `beta`.
+
+## Grok's repository (OmarKEYs-grok)
+
+Grok's clone is `~/Work/omarkeys-grok` with `origin` = OmarKEYs-grok.
+Claude and Cursor do not commit there. Grok is the only one who promotes
+into `main`:
 
 ```sh
 cd ~/Work/omarkeys-grok
@@ -65,8 +89,7 @@ git merge --no-ff shared/develop
 git push origin main
 ```
 
-Do not push Grok commits to `shared` unless handing a patch back. Local
-`develop` tracks `shared/develop` for inspection only.
+Do not push Grok commits to the shared repo unless handing a patch back.
 
 ## Working copies
 
@@ -78,9 +101,9 @@ branch picker refuses to switch or sync when this tree is dirty.
 
 | Path | Who | Purpose |
 |---|---|---|
-| `~/Work/omarkeys-grok` | Grok | This repo (`origin` = OmarKEYs-grok). Edit and commit here. |
+| `~/Work/omarkeys-grok` | Grok | OmarKEYs-grok. Edit and commit there. |
 | `~/Work/omarkeys-claude` | Claude | Shared-repo clone |
-| `~/Work/omarkeys-cursor` | Cursor | Shared-repo clone |
+| `~/Work/omarkeys-cursor` | Cursor | Shared-repo clone (`origin` = OmarKEYs) |
 | `~/Work/omarkeys` | nobody | Deploy slot. No edits. |
 
 To test a branch live, point the deploy slot at it (corner picker, or
@@ -92,7 +115,7 @@ To test a branch live, point the deploy slot at it (corner picker, or
 |---|---|---|
 | `main` | Grok | **Main channel.** Released/stable; Grok promotes `beta` into `main` |
 | `beta` | Claude | **Beta channel.** Tested, ahead of stable; Claude promotes `develop` into `beta` |
-| `develop` | Claude (this agent) | Integration branch; only accepts approved merges from `develop-claude` and `develop-cursor` |
+| `develop` | Claude (integration) | Integration branch; only accepts approved merges from `develop-claude` and `develop-cursor` |
 | `develop-claude` | Claude | Claude's working integration branch; feature branches merge here first, brought into `develop` once approved |
 | `develop-cursor` | Cursor | Cursor's own integration branch; opens a PR into `develop` when ready to hand work back |
 | `feature/phase2-sidebar-tree` | Claude | Off `develop-claude` |
@@ -130,3 +153,21 @@ starting so two agents don't duplicate work.
 
 That symlinks this repo to `~/.config/omarchy/plugins/io.github.romills.omarkeys`
 and `dofile`s `hyprland.lua` from `~/.config/hypr/bindings.lua`.
+
+## Cursor Cloud specific instructions
+
+The Cloud Agent VM is headless Ubuntu, not an Omarchy/Hyprland desktop.
+`node` and `python3` are preinstalled (see `.cursor/environment.json`), so
+these checks run here:
+
+```sh
+node --test tests/keymap-data.test.js   # data layer; 1 case needs a live host (see below)
+python3 -m py_compile dump-keymap apply-edit
+git diff --check
+```
+
+`omarchy plugin validate .`, `hyprctl reload`/`configerrors`, the running
+overlay, and the `dump-keymap reads live Hyprland bindings` test all require
+an Omarchy host (`omarchy`, `hyprctl`, `omarchy-menu-keybindings`). They are
+not available headlessly, so that one node case is expected to fail on the
+Cloud Agent VM; run them on a real Omarchy machine.
