@@ -333,10 +333,6 @@ function keyName(name) {
   return KEY_NAMES[key] || key
 }
 
-function gestureLabel(part) {
-  return splitGesture(part)
-}
-
 function displayNames(keys) {
   var parts = collapseMouse(splitKeys(keys))
   var out = []
@@ -405,14 +401,6 @@ function setConfig(cfg) {
     searchMode: (cfg && (cfg.searchMode === "keys" || cfg.searchMode === "action"))
       ? cfg.searchMode : "all"
   }
-}
-
-function chipStyle() {
-  return currentConfig.chipStyle || "full"
-}
-
-function rowLayout() {
-  return currentConfig.rowLayout || "keys"
 }
 
 function searchMode() {
@@ -651,6 +639,20 @@ function isRunnable(keys) {
   return true
 }
 
+// One verdict for the board (dim) and the keyboard (Enter). dump-keymap's
+// runnable:false wins; a recovered dispatcher can still run even if the
+// chord text looks odd; otherwise the chord must parse as a shortcut.
+function rowRunnable(row) {
+  if (!row || row.runnable === false)
+    return false
+  if (row.dispatcher)
+    return true
+  var sc = row.bindKey
+    ? { mods: row.mods || "", key: row.bindKey }
+    : shortcut(row.keys)
+  return isRunnable(row.keys) && !!sc
+}
+
 var KEY_SYMS = {
   Return: "Return",
   Enter: "Return",
@@ -717,11 +719,7 @@ function navList(query) {
         // window never reach Hyprland's bind matcher.
         dispatcher: row.dispatcher || "",
         dispatchArg: row.arg || "",
-        // dump-keymap sets runnable false on binds the overlay cannot
-        // issue; that verdict wins over anything the chord text implies.
-        runnable: row.runnable === false
-          ? false
-          : ((isRunnable(row.keys) && !!sc) || !!row.dispatcher),
+        runnable: rowRunnable(row),
         shortcut: sc
       })
     }

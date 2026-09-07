@@ -21,7 +21,6 @@ Rectangle {
   property real fontScale: 1.0
   property real iconScale: 1.35
   signal rowClicked(string keys, string action)
-  signal rowActivated(string keys, string action)
   signal rowHighlighted(var item)
 
   readonly property string numberLabel: {
@@ -96,7 +95,6 @@ Rectangle {
         fontScale: section.fontScale
         iconScale: section.iconScale
         onClicked: function(keys, action) { section.rowClicked(keys, action) }
-        onActivated: function(keys, action) { section.rowActivated(keys, action) }
         onHighlighted: function(item) { section.rowHighlighted(item) }
       }
     }

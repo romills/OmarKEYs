@@ -11,6 +11,10 @@ Flickable {
   boundsBehavior: Flickable.StopAtBounds
   activeFocusOnTab: false
 
+  readonly property color selectedBg: host
+    ? Qt.rgba(host.chipFg.r, host.chipFg.g, host.chipFg.b, 0.32)
+    : "transparent"
+
   function revealItem(item) {
     if (!item || board.height <= 0)
       return
@@ -30,6 +34,33 @@ Flickable {
         bottom - board.height + pad)
   }
 
+  // One section card for both columns so a layout tweak cannot land on
+  // the left Repeater and miss the right.
+  component SectionCard: KeymapSection {
+    required property int index
+    required property var modelData
+    required property int numberOffset
+
+    title: modelData.title
+    sectionNumber: index * 2 + numberOffset
+    rows: modelData.rows
+    selectedKeys: host.selectedKeys
+    selectedAction: host.selectedAction
+    fontFamily: host.fontFamily
+    foreground: host.foreground
+    borderColor: host.border
+    chipBg: host.chipBg
+    chipFg: host.chipFg
+    selectedBg: board.selectedBg
+    selectedFg: host.chipFg
+    chipStyle: host.chipStyle
+    rowLayout: host.rowLayout
+    fontScale: host.fontScale
+    iconScale: host.iconScale
+    onRowClicked: function(keys, action) { host.activateRow(keys, action) }
+    onRowHighlighted: function(item) { Qt.callLater(function() { board.revealItem(item) }) }
+  }
+
   Row {
     id: columnsRow
     width: parent.width
@@ -42,29 +73,9 @@ Flickable {
 
       Repeater {
         model: host ? host.leftSections : []
-        delegate: KeymapSection {
-          required property int index
-          required property var modelData
+        delegate: SectionCard {
           width: leftCol.width
-          title: modelData.title
-          sectionNumber: index * 2 + 1
-          rows: modelData.rows
-          selectedKeys: host.selectedKeys
-          selectedAction: host.selectedAction
-          fontFamily: host.fontFamily
-          foreground: host.foreground
-          borderColor: host.border
-          chipBg: host.chipBg
-          chipFg: host.chipFg
-          selectedBg: Qt.rgba(host.chipFg.r, host.chipFg.g, host.chipFg.b, 0.32)
-          selectedFg: host.chipFg
-          chipStyle: host.chipStyle
-          rowLayout: host.rowLayout
-          fontScale: host.fontScale
-          iconScale: host.iconScale
-          onRowClicked: function(keys, action) { host.activateRow(keys, action) }
-          onRowActivated: function(keys, action) { host.activateRow(keys, action) }
-          onRowHighlighted: function(item) { Qt.callLater(function() { board.revealItem(item) }) }
+          numberOffset: 1
         }
       }
     }
@@ -76,29 +87,9 @@ Flickable {
 
       Repeater {
         model: host ? host.rightSections : []
-        delegate: KeymapSection {
-          required property int index
-          required property var modelData
+        delegate: SectionCard {
           width: rightCol.width
-          title: modelData.title
-          sectionNumber: index * 2 + 2
-          rows: modelData.rows
-          selectedKeys: host.selectedKeys
-          selectedAction: host.selectedAction
-          fontFamily: host.fontFamily
-          foreground: host.foreground
-          borderColor: host.border
-          chipBg: host.chipBg
-          chipFg: host.chipFg
-          selectedBg: Qt.rgba(host.chipFg.r, host.chipFg.g, host.chipFg.b, 0.32)
-          selectedFg: host.chipFg
-          chipStyle: host.chipStyle
-          rowLayout: host.rowLayout
-          fontScale: host.fontScale
-          iconScale: host.iconScale
-          onRowClicked: function(keys, action) { host.activateRow(keys, action) }
-          onRowActivated: function(keys, action) { host.activateRow(keys, action) }
-          onRowHighlighted: function(item) { Qt.callLater(function() { board.revealItem(item) }) }
+          numberOffset: 2
         }
       }
     }

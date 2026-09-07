@@ -59,7 +59,19 @@ window_or_active() {
   local want="$1"
   [[ -n $want ]] || { echo "activewindow"; return; }
   local addr="${want#address:}"
-  if hyprctl -j clients 2>/dev/null | grep -qF "\"$addr\""; then
+  if hyprctl -j clients 2>/dev/null | python3 -c '
+import json, sys
+want = sys.argv[1].removeprefix("address:")
+try:
+    clients = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+for c in clients:
+    addr = str(c.get("address") or "").removeprefix("address:")
+    if addr == want:
+        sys.exit(0)
+sys.exit(1)
+' "$addr"; then
     echo "$want"
   else
     echo "activewindow"

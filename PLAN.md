@@ -165,6 +165,25 @@ moved the sink; the old path returned ok and changed nothing.
 - [x] A 3s timer while open so `hyprctl binds` picks up Lua reloads we did not write
 - [x] Watch `omarkeys-edits.lua` the same way as `bindings.lua`
 
+### (cursor) Beta code cleanup
+
+Reviewed current `beta` (1.6.1) and landed the low-risk cleanups on
+`develop-cursor`. Left the invasive splits as follow-ups so we do not
+rewrite the overlay chrome in the same pass.
+
+- [x] (cursor) One `rowRunnable()` for board dimming and Enter
+- [x] (cursor) Sparse numbered binds keep dump dispatcher/arg
+- [x] (cursor) Shared board section delegate; click-to-run only (no dual click/dblclick API)
+- [x] (cursor) Enter stays View-only until the Phase 3 header exists
+- [x] (cursor) Drop dead `toggleApp` / `allGroupsVisible` / unused KeymapData accessors
+- [x] (cursor) Shared `resetSession()` for close/dismiss; named overlay timings
+- [x] (cursor) Cache `hyprland.lua` config for a Super-down gesture
+- [x] (cursor) Exact window-address match in `run-shortcut`
+- [x] (cursor) Skip the live dump test without Omarchy; add dump-keymap unit tests
+- [ ] (cursor) Extract sidebar tree chrome into delegates
+- [ ] (cursor) Split Keymap.qml host (config / actions / chrome)
+- [ ] (cursor) One shared section-taxonomy source for dump-keymap + KeymapData
+
 ## Future
 
 ### Finish Phase 3 — View | Edit UI

@@ -49,6 +49,7 @@ local st = {
   overlay_layers = 0,
   close_swallowed = false,
   restore_close_pending = false,
+  gesture_cfg = nil,
 }
 
 local function stop_timer(name)
@@ -166,9 +167,10 @@ local function on_key(keycode, _, state)
       st.super_down = true
       st.chorded = false
       st.close_tap = st.overlay_open
+      st.gesture_cfg = read_config()
       stop_timer("hold_timer")
       if not st.overlay_open then
-        local hold_ms = math.floor((read_config().holdSeconds or 5) * 1000)
+        local hold_ms = math.floor((st.gesture_cfg.holdSeconds or 5) * 1000)
         if hold_ms > 0 then
           st.hold_timer = hl.timer(function()
             st.hold_timer = nil
@@ -192,6 +194,8 @@ local function on_key(keycode, _, state)
     end
     st.super_down = false
     stop_timer("hold_timer")
+    local cfg = st.gesture_cfg or read_config()
+    st.gesture_cfg = nil
     if st.restore_close_pending then
       restore_super_w()
     end
@@ -208,12 +212,12 @@ local function on_key(keycode, _, state)
     elseif st.overlay_open then
       st.close_tap = false
       grab_keys()
-    elseif read_config().doubleTap and st.tap_armed then
+    elseif cfg.doubleTap and st.tap_armed then
       st.tap_armed = false
       stop_timer("tap_timer")
       show_overlay()
       grab_keys()
-    elseif read_config().doubleTap then
+    elseif cfg.doubleTap then
       st.tap_armed = true
       stop_timer("tap_timer")
       st.tap_timer = hl.timer(function()

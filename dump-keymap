@@ -518,7 +518,7 @@ def collapse_numbered(rows: list[dict]) -> list[dict]:
     pattern = re.compile(
         r"^(?P<label>Switch to workspace|Move window to workspace|Move window silently to workspace|Bar panel|Switch to group window)\s+(?P<n>\d+)$"
     )
-    groups: dict[tuple[str, str], list[tuple[int, str]]] = {}
+    groups: dict[tuple[str, str], list[tuple[int, dict]]] = {}
     passthrough: list[dict] = []
     order: list[tuple[str, str] | None] = []
 
@@ -535,7 +535,7 @@ def collapse_numbered(rows: list[dict]) -> list[dict]:
             order.append(key)
         else:
             order.append("skip")
-        groups[key].append((int(match.group("n")), row["keys"]))
+        groups[key].append((int(match.group("n")), row))
 
     out: list[dict] = []
     used = set()
@@ -562,10 +562,12 @@ def collapse_numbered(rows: list[dict]) -> list[dict]:
             keys = f"{mods} + 1-5" if mods else "1-5"
             action = f"{label} 1-5"
         else:
-            for _, original_keys in groups[item]:
-                n = next(n for n, k in groups[item] if k == original_keys)
-                out.append({"keys": original_keys, "action": f"{label} {n}"})
+            # Incomplete sequences stay as individual rows. Keep the dump's
+            # dispatcher/arg so Enter can still issue them.
+            for _, original in sorted(groups[item], key=lambda t: t[0]):
+                out.append(original)
             continue
+        # Collapsed ranges are descriptive, not runnable.
         out.append({"keys": keys, "action": action})
     return out
 
