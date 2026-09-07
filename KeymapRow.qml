@@ -19,6 +19,7 @@ Rectangle {
   property string rowLayout: "keys"
   property real fontScale: 1.0
   property real iconScale: 1.35
+  property bool omarchyActive: false
   readonly property bool keysFirst: rowLayout !== "action"
   // Both renderings of the same chord, index for index: collapseMouse runs
   // for either style, so a chip and its full name share a position.
@@ -37,15 +38,14 @@ Rectangle {
   readonly property real keysWidth: Math.max(0, width * 0.52 - 8)
   readonly property real actionWidth: Math.max(0, width - keysWidth - 16 - Style.spacing.sm)
   signal clicked(string keys, string action)
-  signal activated(string keys, string action)
   signal highlighted(var item)
+  signal recordRequested(var item)
+  signal restoreRequested(var item)
 
-  // dump-keymap's verdict wins where it has one: a bind whose action we
-  // could not recover cannot be issued from the overlay, however runnable
-  // its chord looks. Falls back to reading the chord for app sheet rows.
-  readonly property bool runnable: modelData.runnable === false
-    ? false
-    : KeymapData.isRunnable(modelData.keys)
+  readonly property bool runnable: KeymapData.rowRunnable(modelData)
+  readonly property bool editable: KeymapData.rowEditable(modelData)
+  readonly property bool remapped: KeymapData.rowRemapped(modelData && modelData.action)
+  readonly property bool showRecord: row.omarchyActive && row.editable
 
   width: parent ? parent.width : 0
   height: Math.max(Style.space(22), actionLabel.implicitHeight + 4)
@@ -53,7 +53,7 @@ Rectangle {
   color: selected ? row.selectedBg : "transparent"
   border.width: selected ? 1 : 0
   border.color: selected ? row.selectedFg : row.borderColor
-  opacity: runnable ? 1 : 0.55
+  opacity: row.runnable ? 1 : 0.55
 
   HoverHandler { id: rowHover }
 
@@ -75,12 +75,18 @@ Rectangle {
     color: row.selectedFg
   }
 
+  MouseArea {
+    anchors.fill: parent
+    onClicked: row.clicked(row.modelData.keys, row.modelData.action)
+  }
+
   Row {
     id: keysRow
     x: row.keysFirst ? 8 : row.width - row.keysWidth - 8
     anchors.verticalCenter: parent.verticalCenter
     width: row.keysWidth
     spacing: 4
+    z: 2
 
     Repeater {
       model: row.chipLabels
@@ -135,6 +141,44 @@ Rectangle {
         }
       }
     }
+
+    Text {
+      visible: row.showRecord
+      anchors.verticalCenter: parent.verticalCenter
+      text: "●"
+      textFormat: Text.PlainText
+      color: row.remapped ? row.chipFg : row.foreground
+      opacity: recordHover.hovered ? 1 : (row.remapped ? 0.9 : 0.45)
+      font.family: row.fontFamily
+      font.pixelSize: Math.round(Style.font.caption * row.fontScale)
+      MouseArea {
+        id: recordHover
+        anchors.fill: parent
+        anchors.margins: -4
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: row.recordRequested(row.modelData)
+      }
+    }
+
+    Text {
+      visible: row.showRecord && row.remapped
+      anchors.verticalCenter: parent.verticalCenter
+      text: "↺"
+      textFormat: Text.PlainText
+      color: row.chipFg
+      opacity: restoreHover.hovered ? 1 : 0.8
+      font.family: row.fontFamily
+      font.pixelSize: Math.round(Style.font.body * row.fontScale)
+      MouseArea {
+        id: restoreHover
+        anchors.fill: parent
+        anchors.margins: -4
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: row.restoreRequested(row.modelData)
+      }
+    }
   }
 
   Text {
@@ -148,11 +192,5 @@ Rectangle {
     font.family: row.fontFamily
     font.pixelSize: Math.round(Style.font.body * row.fontScale)
     elide: Text.ElideRight
-  }
-
-  MouseArea {
-    anchors.fill: parent
-    onClicked: row.clicked(row.modelData.keys, row.modelData.action)
-    onDoubleClicked: row.activated(row.modelData.keys, row.modelData.action)
   }
 }

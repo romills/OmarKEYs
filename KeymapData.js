@@ -333,10 +333,6 @@ function keyName(name) {
   return KEY_NAMES[key] || key
 }
 
-function gestureLabel(part) {
-  return splitGesture(part)
-}
-
 function displayNames(keys) {
   var parts = collapseMouse(splitKeys(keys))
   var out = []
@@ -405,14 +401,6 @@ function setConfig(cfg) {
     searchMode: (cfg && (cfg.searchMode === "keys" || cfg.searchMode === "action"))
       ? cfg.searchMode : "all"
   }
-}
-
-function chipStyle() {
-  return currentConfig.chipStyle || "full"
-}
-
-function rowLayout() {
-  return currentConfig.rowLayout || "keys"
 }
 
 function searchMode() {
@@ -651,6 +639,221 @@ function isRunnable(keys) {
   return true
 }
 
+function isProtectedChord(keys) {
+  var k = String(keys || "").trim()
+  if (/^Super\s*\+\s*K$/i.test(k) || /^SUPER\s*\+\s*K$/i.test(k))
+    return true
+  if (/double-tap super|hold super/i.test(k))
+    return true
+  return false
+}
+
+function normalizeChord(keys) {
+  var parts = splitKeys(keys)
+  var have = {}
+  var key = ""
+  for (var i = 0; i < parts.length; i++) {
+    var up = String(parts[i]).trim().toUpperCase()
+    if (up === "SUPER" || up === "META" || up === "WIN")
+      have.SUPER = true
+    else if (up === "SHIFT")
+      have.SHIFT = true
+    else if (up === "CTRL" || up === "CONTROL")
+      have.CTRL = true
+    else if (up === "ALT" || up === "MOD1")
+      have.ALT = true
+    else if (up)
+      key = up
+  }
+  var out = []
+  if (have.SUPER) out.push("SUPER")
+  if (have.SHIFT) out.push("SHIFT")
+  if (have.CTRL) out.push("CTRL")
+  if (have.ALT) out.push("ALT")
+  if (key) out.push(key)
+  return out.join(" + ")
+}
+
+var chordIndex = { defaults: {}, remapped: {}, moves: [], current: {} }
+
+function setChordIndex(data) {
+  chordIndex = data && typeof data === "object"
+    ? {
+        defaults: data.defaults || {},
+        remapped: data.remapped || {},
+        moves: data.moves || [],
+        current: data.current || {}
+      }
+    : { defaults: {}, remapped: {}, moves: [], current: {} }
+}
+
+function defaultKeysFor(action) {
+  var meta = chordIndex.defaults && chordIndex.defaults[action]
+  if (!meta)
+    return ""
+  return typeof meta === "object" ? String(meta.keys || "") : String(meta || "")
+}
+
+function rowRemapped(action) {
+  var name = String(action || "")
+  if (!name)
+    return false
+  if (chordIndex.remapped && chordIndex.remapped[name])
+    return true
+  var def = defaultKeysFor(name)
+  var cur = chordIndex.current && chordIndex.current[name]
+  if (!def || !cur)
+    return false
+  return normalizeChord(def) !== normalizeChord(cur)
+}
+
+function flattenRows(sectionList) {
+  var list = sectionList || sections
+  var rows = []
+  if (!list)
+    return rows
+  for (var s = 0; s < list.length; s++) {
+    var block = (list[s] && list[s].rows) || []
+    for (var i = 0; i < block.length; i++)
+      rows.push(block[i])
+  }
+  return rows
+}
+
+function findOccupant(chord, exceptAction, sectionList, pending) {
+  var want = normalizeChord(chord)
+  if (!want)
+    return null
+  var keys = {}
+  var info = {}
+  var rows = flattenRows(sectionList)
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i]
+    var name = row && row.action
+    if (!name)
+      continue
+    keys[name] = row.keys
+    info[name] = row
+  }
+  var moves = pending || []
+  for (var p = 0; p < moves.length; p++) {
+    var step = moves[p]
+    if (!step || !step.action)
+      continue
+    keys[step.action] = step.new_keys
+    info[step.action] = {
+      action: step.action,
+      keys: step.new_keys,
+      dispatcher: step.dispatcher || (info[step.action] && info[step.action].dispatcher) || "",
+      arg: step.arg != null ? step.arg : ((info[step.action] && info[step.action].arg) || "")
+    }
+  }
+  for (var action in keys) {
+    if (exceptAction && action === exceptAction)
+      continue
+    if (normalizeChord(keys[action]) !== want)
+      continue
+    var hit = info[action] || {}
+    return {
+      action: action,
+      keys: keys[action],
+      dispatcher: hit.dispatcher || "",
+      arg: hit.arg || ""
+    }
+  }
+  return null
+}
+
+function relatedActions(action, moves) {
+  var related = {}
+  related[String(action || "")] = true
+  var list = moves || []
+  var changed = true
+  while (changed) {
+    changed = false
+    for (var i = 0; i < list.length; i++) {
+      var move = list[i] || {}
+      var name = String(move.action || "")
+      var because = String(move.because || "")
+      if (related[name] || (because && related[because])) {
+        if (name && !related[name]) {
+          related[name] = true
+          changed = true
+        }
+        if (because && !related[because]) {
+          related[because] = true
+          changed = true
+        }
+      }
+    }
+  }
+  var out = []
+  for (var key in related) {
+    if (key)
+      out.push(key)
+  }
+  return out.sort()
+}
+
+function restorePlan(action, defaults, moves) {
+  var related = relatedActions(action, moves)
+  var current = {}
+  for (var name in (defaults || {})) {
+    var meta = defaults[name] || {}
+    current[name] = typeof meta === "object" ? String(meta.keys || "") : String(meta || "")
+  }
+  var list = moves || []
+  for (var i = 0; i < list.length; i++) {
+    if (list[i] && list[i].action)
+      current[list[i].action] = list[i].to
+  }
+  var steps = []
+  for (var r = 0; r < related.length; r++) {
+    var item = related[r]
+    var factory = defaults && defaults[item]
+    if (!factory)
+      continue
+    var factoryKeys = typeof factory === "object" ? String(factory.keys || "") : String(factory || "")
+    if (normalizeChord(current[item] || "") === normalizeChord(factoryKeys))
+      continue
+    steps.push({
+      action: item,
+      old_keys: current[item] || "",
+      new_keys: factoryKeys,
+      dispatcher: (typeof factory === "object" && factory.dispatcher) || "",
+      arg: (typeof factory === "object" && factory.arg) || "",
+      because: ""
+    })
+  }
+  return steps
+}
+
+// Chord remap only: need the recovered Hyprland action, and never OmarKEYS'
+// own summons (Super+K / hold / double-tap).
+function rowEditable(row) {
+  if (!row || isProtectedChord(row.keys))
+    return false
+  if (row.runnable === false)
+    return false
+  if (!row.dispatcher)
+    return false
+  return isRunnable(row.keys)
+}
+
+// One verdict for the board (dim) and the keyboard (Enter). dump-keymap's
+// runnable:false wins; a recovered dispatcher can still run even if the
+// chord text looks odd; otherwise the chord must parse as a shortcut.
+function rowRunnable(row) {
+  if (!row || row.runnable === false)
+    return false
+  if (row.dispatcher)
+    return true
+  var sc = row.bindKey
+    ? { mods: row.mods || "", key: row.bindKey }
+    : shortcut(row.keys)
+  return isRunnable(row.keys) && !!sc
+}
+
 var KEY_SYMS = {
   Return: "Return",
   Enter: "Return",
@@ -717,11 +920,7 @@ function navList(query) {
         // window never reach Hyprland's bind matcher.
         dispatcher: row.dispatcher || "",
         dispatchArg: row.arg || "",
-        // dump-keymap sets runnable false on binds the overlay cannot
-        // issue; that verdict wins over anything the chord text implies.
-        runnable: row.runnable === false
-          ? false
-          : ((isRunnable(row.keys) && !!sc) || !!row.dispatcher),
+        runnable: rowRunnable(row),
         shortcut: sc
       })
     }

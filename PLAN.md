@@ -74,7 +74,7 @@ intentional "jump to this app" action. Not building this.
 - [x] `apply-edit remap` writes `omarkeys-edits.lua`
 - [x] Backup + git history per working version; restore on reload error
 - [x] Lua-escape bind strings; refuse chords that are not Hyprland-like
-- [x] Capture/remap functions in `Keymap.qml` (`setEditMode`, `startCapture`)
+- [x] Capture/remap functions in `Keymap.qml` (per-row record popup)
 
 ### Phase 2 — Sidebar tree UI
 
@@ -165,15 +165,44 @@ moved the sink; the old path returned ok and changed nothing.
 - [x] A 3s timer while open so `hyprctl binds` picks up Lua reloads we did not write
 - [x] Watch `omarkeys-edits.lua` the same way as `bindings.lua`
 
+### (cursor) Beta code cleanup
+
+Reviewed current `beta` (1.6.1) and landed the low-risk cleanups on
+`develop-cursor`. Left the invasive splits as follow-ups so we do not
+rewrite the overlay chrome in the same pass.
+
+- [x] (cursor) One `rowRunnable()` for board dimming and Enter
+- [x] (cursor) Sparse numbered binds keep dump dispatcher/arg
+- [x] (cursor) Shared board section delegate; click-to-run only (no dual click/dblclick API)
+- [x] (cursor) Enter stays View-only until the Phase 3 header exists
+- [x] (cursor) Drop dead `toggleApp` / `allGroupsVisible` / unused KeymapData accessors
+- [x] (cursor) Shared `resetSession()` for close/dismiss; named overlay timings
+- [x] (cursor) Cache `hyprland.lua` config for a Super-down gesture
+- [x] (cursor) Exact window-address match in `run-shortcut`
+- [x] (cursor) Skip the live dump test without Omarchy; add dump-keymap unit tests
+- [ ] (cursor) Extract sidebar tree chrome into delegates
+- [ ] (cursor) Split Keymap.qml host (config / actions / chrome)
+- [ ] (cursor) One shared section-taxonomy source for dump-keymap + KeymapData
+
 ## Future
 
-### Finish Phase 3 — View | Edit UI
+### Finish Phase 3 — Record / restore chords
 
-- [ ] Header toggle View | Edit (Omarchy branch only)
-- [ ] Dim non-editable rows; “press a new chord or Esc”
-- [ ] Enter stays View-only
-- [ ] Surface `apply-edit revert` / history in the overlay
-- [ ] `install.sh` wires `omarkeys-edits.lua` on first install (first edit already appends the dofile)
+- [x] (cursor) Record icon next to each editable Omarchy key (no header View|Edit)
+- [x] (cursor) Record popup: listen, then Save; Enter still runs the row
+- [x] (cursor) Conflict if the captured chord is already in use; Save stays off until Swap or Move the other
+- [x] (cursor) Factory chord remembered in `omarkeys-chords.json`; never overwritten by later dumps
+- [x] (cursor) Restore default unwinds that remap and any displaced chain
+- [x] (cursor) `install.sh` wires `omarkeys-edits.lua` on first install
+
+Chord remap writes `~/.config/hypr/omarkeys-edits.lua` using Omarchy's
+own override style (`hl.unbind` then `hl.bind` with the recovered
+dispatcher). Factory keys and the remap log live in
+`~/.config/omarchy/omarkeys-chords.json`. That is allowed for an
+unsandboxed overlay plugin: it edits the user's Hyprland config, not
+the plugin git origin and not Omarchy's default bind modules. Super+K /
+hold / double-tap cannot be remapped. Dispatcher/args are not edited —
+only the chord.
 
 ### Later (out of the original three phases)
 

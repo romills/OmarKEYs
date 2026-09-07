@@ -147,6 +147,10 @@ if [[ -f $BINDINGS ]]; then
   strip_omarkeys_from_bindings
   printf '\n%s\n%s\n' "$MARKER_BEGIN" "$DOFLE_LINE" >> "$BINDINGS"
   log "wired $BINDINGS -> hyprland.lua"
+  if command -v python3 >/dev/null; then
+    "$ROOT/apply-edit" wire >/dev/null || true
+    log "wired $BINDINGS -> omarkeys-edits.lua"
+  fi
 else
   echo "missing $BINDINGS" >&2
   exit 1

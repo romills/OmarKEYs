@@ -42,7 +42,12 @@ Type while it is open to filter, including digits.
 
 - Double-tap Super on/off
 - Hold Super duration, 1–10 seconds
-- Edit mode (Omarchy source): pick a command, then press its new chord
+- Record (Omarchy source): ● next to an editable key opens a record
+  popup. Press a new chord, then Save. If that chord is already in use,
+  Swap or Move the other command before Save is enabled. A changed key
+  shows ↺ Restore default, which unwinds that remap and any keys it
+  displaced. Writes `omarkeys-edits.lua` (unbind + bind) and remembers
+  factory chords in `omarkeys-chords.json`.
 
 App windows with a bundled sheet (Chromium, Ghostty, Nautilus) can be
 selected in the overlay; those sheets live in `sheets/`.
@@ -73,9 +78,10 @@ your user's permissions, so here is everything OmarKEYS reaches for.
 | Path | What |
 |---|---|
 | `~/.config/omarchy/omarkeys.json` | Overlay settings (hidden groups, modifiers, gestures) |
+| `~/.config/omarchy/omarkeys-chords.json` | Factory chords and the remap log (restore default) |
 | `~/.config/hypr/omarkeys-edits.lua` | Chord remaps made in the overlay |
 | `~/.config/hypr/bindings.lua` | Installer appends one `dofile` line; backed up first |
-| `~/.local/state/omarchy/omarkeys-history` | Git history of remaps, so an edit can be reverted |
+| `~/.local/state/omarchy/omarkeys-history` | Git history of remaps, so a failed reload can roll back |
 
 **Privilege boundaries**
 
@@ -177,13 +183,15 @@ user bindings file so Super+chords stay unmodified.
 | Path | Role |
 |---|---|
 | `Keymap.qml` | Overlay host: config, live dump, keys, execute |
-| `KeymapSidebar.qml` | Groups and modifier filters |
+| `KeymapSidebar.qml` | The tree: Omarchy areas/groups and Active Apps |
 | `KeymapBoard.qml` | Two-column binding cards |
 | `KeymapSection.qml` / `KeymapRow.qml` | One topic card and one command row |
-| `KeymapSettingsBar.qml` | Double-tap and hold controls |
+| `KeymapRecordPopup.qml` | Record a new chord, show conflicts, restore default |
+| `KeymapOptionsMenu.qml` | Options popup: display, modifiers, gestures |
+| `KeymapHideButton.qml` | Show/Hide control used in the tree |
 | `KeymapData.js` | Filter, catalog, shortcut parse, fallback list |
 | `dump-keymap` | Live Hyprland binds → JSON sections |
-| `apply-edit` | Remap a chord into `omarkeys-edits.lua` |
+| `apply-edit` | Remap a chord into `omarkeys-edits.lua`; remember factory keys |
 | `sheets/` | Bundled app keymaps (Chromium, Ghostty, Nautilus) |
 | `run-shortcut` | Replay a chord after the overlay closes |
 | `hyprland.lua` | Super+K, double-tap, hold |
