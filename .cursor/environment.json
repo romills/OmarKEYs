@@ -1,0 +1,4 @@
+{
+  "name": "OmarKEYS",
+  "install": "node --version && python3 --version && git --version && jq --version"
+}

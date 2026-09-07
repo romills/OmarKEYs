@@ -51,3 +51,21 @@ QML changes need `omarchy restart shell` (keepLoaded overlay).
 
 That symlinks this repo to `~/.config/omarchy/plugins/io.github.romills.omarkeys`
 and `dofile`s `hyprland.lua` from `~/.config/hypr/bindings.lua`.
+
+## Cursor Cloud specific instructions
+
+The Cloud Agent VM is headless Ubuntu, not an Omarchy/Hyprland desktop.
+`node` and `python3` are preinstalled (see `.cursor/environment.json`), so
+these checks run here:
+
+```sh
+node --test tests/keymap-data.test.js   # data layer; 1 case needs a live host (see below)
+python3 -m py_compile dump-keymap apply-edit
+git diff --check
+```
+
+`omarchy plugin validate .`, `hyprctl reload`/`configerrors`, the running
+overlay, and the `dump-keymap reads live Hyprland bindings` test all require
+an Omarchy host (`omarchy`, `hyprctl`, `omarchy-menu-keybindings`). They are
+not available headlessly, so that one node case is expected to fail on the
+Cloud Agent VM; run them on a real Omarchy machine.
