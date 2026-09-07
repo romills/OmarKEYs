@@ -72,16 +72,6 @@ Item {
   property string editStatus: ""
   readonly property bool omarchyActive: root.activeSource === "omarchy"
 
-  readonly property bool allGroupsVisible: {
-    var list = root.groupList
-    if (!list || !list.length)
-      return true
-    for (var i = 0; i < list.length; i++) {
-      if (list[i].hidden)
-        return false
-    }
-    return true
-  }
   readonly property bool allModsAny: root.modSuper === "any" && root.modShift === "any" && root.modCtrl === "any" && root.modAlt === "any"
   readonly property bool allModsMust: root.modSuper === "must" && root.modShift === "must" && root.modCtrl === "must" && root.modAlt === "must"
   readonly property bool allModsHide: root.modSuper === "hide" && root.modShift === "hide" && root.modCtrl === "hide" && root.modAlt === "hide"
@@ -99,6 +89,11 @@ Item {
   readonly property int cornerRadius: Style.cornerRadius
   property string fontFamily: Style.font.menuFamily
   property int contentMargin: Style.spacing.panelPadding
+
+  readonly property int grabRetryMs: 50
+  readonly property int contextArmMs: 180
+  readonly property int runAfterDismissMs: 120
+  readonly property int liveReloadMs: 3000
 
   function pluginId() {
     return (root.manifest && root.manifest.id) || "io.github.romills.omarkeys"
@@ -136,6 +131,9 @@ Item {
     root.branchMenuOpen = false
     root.optionsMenuOpen = false
     root.selected = 0
+    root.capturing = false
+    root.editMode = false
+    root.editStatus = ""
     root.applyConfigToData()
     root.refreshKeymap()
     root.refreshGitInfo()
@@ -291,7 +289,7 @@ Item {
 
   Timer {
     id: reloadTimer
-    interval: 3000
+    interval: root.liveReloadMs
     repeat: true
     running: root.opened
     onTriggered: root.refreshKeymap()
@@ -476,7 +474,7 @@ Item {
 
   Timer {
     id: runTimer
-    interval: 120
+    interval: root.runAfterDismissMs
     repeat: false
     onTriggered: {
       var script = root.sourceDir + "/run-shortcut"
@@ -522,7 +520,7 @@ Item {
 
   Timer {
     id: grabWatch
-    interval: 50
+    interval: root.grabRetryMs
     repeat: true
     running: root.opened && !root.grabKeys && !root.launching
     onTriggered: root.grab()
@@ -530,7 +528,7 @@ Item {
 
   Timer {
     id: armContextTimer
-    interval: 180
+    interval: root.contextArmMs
     repeat: false
     onTriggered: {
       if (!root.opened || !root.grabKeys)
@@ -554,22 +552,24 @@ Item {
     root.focusTick++
   }
 
-  function close() {
+  function resetSession() {
     root.contextArmed = false
     root.grabKeys = false
     root.opened = false
     root.branchMenuOpen = false
     root.optionsMenuOpen = false
     root.clearSolo()
+    root.capturing = false
+    root.editMode = false
+    root.editStatus = ""
+  }
+
+  function close() {
+    root.resetSession()
   }
 
   function dismiss() {
-    root.contextArmed = false
-    root.grabKeys = false
-    root.opened = false
-    root.branchMenuOpen = false
-    root.optionsMenuOpen = false
-    root.clearSolo()
+    root.resetSession()
     if (root.shell && typeof root.shell.hide === "function")
       root.shell.hide(root.pluginId())
   }
@@ -731,19 +731,6 @@ Item {
       for (var k = 0; k < classes.length; k++)
         next.push(classes[k])
     }
-    root.hiddenApps = next
-    root.saveConfig()
-  }
-
-  function toggleApp(cls) {
-    var next = []
-    var hiding = !root.appIsHidden(cls)
-    for (var i = 0; i < root.hiddenApps.length; i++) {
-      if (root.hiddenApps[i] !== cls)
-        next.push(root.hiddenApps[i])
-    }
-    if (hiding)
-      next.push(cls)
     root.hiddenApps = next
     root.saveConfig()
   }
@@ -1065,7 +1052,7 @@ Item {
   function startCapture(keys, action) {
     if (!root.omarchyActive || !root.editMode)
       return
-    if (!KeymapData.isRunnable(keys)) {
+    if (!KeymapData.rowRunnable({ keys: keys })) {
       root.editStatus = "That row cannot be remapped"
       return
     }
@@ -1118,12 +1105,6 @@ Item {
   }
 
   function executeSelected() {
-    if (root.editMode) {
-      var editItem = root.navItems[root.selected]
-      if (editItem)
-        root.startCapture(editItem.keys, editItem.action)
-      return
-    }
     if (root.launching || !root.opened)
       return
     var item = root.navItems[root.selected]
@@ -1165,10 +1146,7 @@ Item {
 
   function activateRow(keys, action) {
     root.selectKeys(keys, action)
-    if (root.editMode)
-      root.startCapture(keys, action)
-    else
-      root.executeSelected()
+    root.executeSelected()
   }
 
   function isSuperKey(event) {
@@ -1361,12 +1339,6 @@ Item {
           padding: root.contentMargin
 
           MouseArea { anchors.fill: parent; onClicked: {} }
-
-          Shortcut {
-            sequences: ["Return", "Enter"]
-            enabled: root.opened && root.grabKeys && panel.hasKeyboard
-            onActivated: root.executeSelected()
-          }
 
           Item {
             id: keyCatcher

@@ -37,15 +37,12 @@ Rectangle {
   readonly property real keysWidth: Math.max(0, width * 0.52 - 8)
   readonly property real actionWidth: Math.max(0, width - keysWidth - 16 - Style.spacing.sm)
   signal clicked(string keys, string action)
-  signal activated(string keys, string action)
   signal highlighted(var item)
 
-  // dump-keymap's verdict wins where it has one: a bind whose action we
-  // could not recover cannot be issued from the overlay, however runnable
-  // its chord looks. Falls back to reading the chord for app sheet rows.
-  readonly property bool runnable: modelData.runnable === false
-    ? false
-    : KeymapData.isRunnable(modelData.keys)
+  // Same verdict as Enter: dump-keymap's runnable:false, else dispatcher
+  // or a parseable chord. App sheet rows have no dump flag and fall back
+  // to reading the chord.
+  readonly property bool runnable: KeymapData.rowRunnable(modelData)
 
   width: parent ? parent.width : 0
   height: Math.max(Style.space(22), actionLabel.implicitHeight + 4)
@@ -153,6 +150,5 @@ Rectangle {
   MouseArea {
     anchors.fill: parent
     onClicked: row.clicked(row.modelData.keys, row.modelData.action)
-    onDoubleClicked: row.activated(row.modelData.keys, row.modelData.action)
   }
 }

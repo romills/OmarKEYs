@@ -8,7 +8,17 @@ const src = fs.readFileSync(path.join(__dirname, "..", "KeymapData.js"), "utf8")
   .replace(/^\.pragma library\s*/, "")
 const context = {}
 vm.createContext(context)
-vm.runInContext(src + "\nthis.filtered = filtered; this.columns = columns; this.splitKeys = splitKeys; this.sections = sections; this.isRunnable = isRunnable; this.shortcut = shortcut; this.navList = navList; this.sectionStarts = sectionStarts; this.setConfig = setConfig; this.setSections = setSections; this.catalog = catalog; this.catalogFor = catalogFor; this.groupedCatalog = groupedCatalog; this.displayKeys = displayKeys; this.shortKey = shortKey; this.displayNames = displayNames; this.rowMatchesModifiers = rowMatchesModifiers; this.normalizeModifierMode = normalizeModifierMode;", context)
+vm.runInContext(src + "\nthis.filtered = filtered; this.columns = columns; this.splitKeys = splitKeys; this.sections = sections; this.isRunnable = isRunnable; this.shortcut = shortcut; this.navList = navList; this.sectionStarts = sectionStarts; this.setConfig = setConfig; this.setSections = setSections; this.catalog = catalog; this.catalogFor = catalogFor; this.groupedCatalog = groupedCatalog; this.displayKeys = displayKeys; this.shortKey = shortKey; this.displayNames = displayNames; this.rowMatchesModifiers = rowMatchesModifiers; this.normalizeModifierMode = normalizeModifierMode; this.rowRunnable = rowRunnable;", context)
+
+function hasLiveDump() {
+  const { execFileSync } = require("node:child_process")
+  try {
+    execFileSync("which", ["omarchy-menu-keybindings"], { stdio: "ignore" })
+    return true
+  } catch {
+    return false
+  }
+}
 
 test("splitKeys splits Super chords", () => {
   assert.equal(JSON.stringify(context.splitKeys("Super + K")), JSON.stringify(["Super", "K"]))
@@ -73,7 +83,7 @@ test("config hold time and double-tap appear on Main", () => {
   context.setConfig({ doubleTap: true, holdSeconds: 5 })
 })
 
-test("dump-keymap reads live Hyprland bindings", () => {
+test("dump-keymap reads live Hyprland bindings", { skip: !hasLiveDump() ? "needs omarchy-menu-keybindings" : false }, () => {
   const { execFileSync } = require("node:child_process")
   const raw = execFileSync("python3", [path.join(__dirname, "..", "dump-keymap")], { encoding: "utf8" })
   const data = JSON.parse(raw)
@@ -295,4 +305,16 @@ test("a gesture shows the key it applies to, at every chip style", () => {
   // Gestures are still not dispatchable; splitting them is display only.
   assert.equal(context.isRunnable("Double-tap Super"), false)
   assert.equal(context.isRunnable("Hold Super 5s"), false)
+})
+
+test("rowRunnable matches the board and Enter", () => {
+  assert.equal(context.rowRunnable({ keys: "Super + K" }), true)
+  assert.equal(context.rowRunnable({ keys: "Super + 1-9, 0" }), false)
+  assert.equal(context.rowRunnable({ keys: "Super + K", runnable: false }), false)
+  assert.equal(context.rowRunnable({
+    keys: "Super + K", runnable: false, dispatcher: "exec"
+  }), false)
+  assert.equal(context.rowRunnable({
+    keys: "not a chord", dispatcher: "workspace", arg: "1"
+  }), true)
 })

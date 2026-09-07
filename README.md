@@ -177,10 +177,11 @@ user bindings file so Super+chords stay unmodified.
 | Path | Role |
 |---|---|
 | `Keymap.qml` | Overlay host: config, live dump, keys, execute |
-| `KeymapSidebar.qml` | Groups and modifier filters |
+| `KeymapSidebar.qml` | The tree: Omarchy areas/groups and Active Apps |
 | `KeymapBoard.qml` | Two-column binding cards |
 | `KeymapSection.qml` / `KeymapRow.qml` | One topic card and one command row |
-| `KeymapSettingsBar.qml` | Double-tap and hold controls |
+| `KeymapOptionsMenu.qml` | Options popup: display, modifiers, gestures |
+| `KeymapHideButton.qml` | Show/Hide control used in the tree |
 | `KeymapData.js` | Filter, catalog, shortcut parse, fallback list |
 | `dump-keymap` | Live Hyprland binds → JSON sections |
 | `apply-edit` | Remap a chord into `omarkeys-edits.lua` |

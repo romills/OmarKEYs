@@ -104,8 +104,7 @@ def append_edit(old_keys: str, old_action: str, new_keys: str, action: str) -> N
     if not EDITS.exists():
         EDITS.write_text(
             "-- OmarKEYS chord overrides. Each working version is also git-committed\n"
-            "-- under ~/.local/state/omarchy/omarkeys-history.\n"
-            "local edits = edits or {}\n\n"
+            "-- under ~/.local/state/omarchy/omarkeys-history.\n\n"
         )
     stanza = (
         f"-- {dt.datetime.now().isoformat(timespec='seconds')}: "
