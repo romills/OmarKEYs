@@ -6,9 +6,9 @@ const path = require("node:path")
 // hyprland.lua runs inside Hyprland's own Lua config, so its Super detection
 // cannot be exercised from node: there is no `hl` here to stand it up against.
 // super-detection.test.lua drives the real handler against a stub, and this
-// wrapper runs it so `node --test tests/*.test.js` -- the command AGENTS.md
-// documents -- covers the Lua side too, rather than leaving a suite nobody
-// runs unless they read the file.
+// wrapper runs it so `node --test tests/*.test.js` -- the documented
+// validation command -- covers the Lua side too, rather than leaving a suite
+// nobody runs unless they read the file.
 const harness = path.join(__dirname, "super-detection.test.lua")
 
 // Whichever interpreter is on the machine. Omarchy ships lua, but a checkout

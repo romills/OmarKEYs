@@ -317,6 +317,33 @@ cd ~/Work/omarkeys
 3. Point `~/.config/hypr/bindings.lua` at `hyprland.lua`
 4. Reload Hyprland
 
+#### Exactly what the installer touches
+
+It runs as your user and needs no root. Everything it writes is under
+`$XDG_CONFIG_HOME` (`~/.config` by default), and the only network access is
+cloning this repository from the origin your checkout already points at.
+
+| Path | What happens to it |
+|---|---|
+| `~/.config/omarchy/plugins/io.github.romills.omarkeys/` | Created, as a `git clone` of this repo on the branch you ran the installer from. With `--dev`, a symlink to your checkout instead. |
+| `~/.config/hypr/bindings.lua` | **Copied to `bindings.lua.bak.<epoch>` first**, then any previous OmarKEYS block is stripped and one `dofile(...)` line appended under an `-- OmarKEYS` marker. Nothing else in the file is altered. |
+| `run-shortcut`, `dump-keymap`, `apply-edit`, `plugin-git` | Made executable, in your checkout. |
+| Omarchy plugin registry | `omarchy plugin enable io.github.romills.omarkeys`; the pre-rename id `romills.omarkeys` is disabled if present. |
+| Hyprland | `hyprctl reload`, then `hyprctl configerrors` — a non-empty result fails the install rather than leaving a broken config. |
+
+Nothing is deleted. An existing plugin directory is moved aside to
+`<dir>.bak.<epoch>` rather than overwritten, and an old plugin at the
+previous id is left in place, disabled, for you to remove.
+
+`./install.sh --uninstall` reverses all of it: the plugin directory goes,
+and the OmarKEYS block is stripped from `bindings.lua` — again after a
+timestamped backup. Your original Super+K binding comes back with
+`omarchy refresh hyprland`.
+
+Super+K is the one existing binding OmarKEYS claims, and only while the
+**Super+K** toggle in the overlay's Options is on. Turned off it never
+unbinds the chord, so whatever held it keeps it.
+
 ### Already installed with a symlink?
 
 Earlier versions symlinked the checkout into the plugins folder. Omarchy's

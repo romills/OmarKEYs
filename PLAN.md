@@ -191,7 +191,7 @@ text per row, and no way to scan by what a command *does*.
 - [x] Gesture rows name the key they apply to (Double-tap → Super)
 - [x] "No keymap sheet" pinned to the bottom of the tree
 - [x] Docs catch-up: README rewritten for the tree and Options popup;
-      AGENTS.md channels table covers the full ladder
+      the channels table covers the full ladder
 - [x] Running a command takes a double-click. A single click only moves
       the highlight, so a click while reading the board cannot fire a
       shortcut and close the overlay. Enter is unchanged.
