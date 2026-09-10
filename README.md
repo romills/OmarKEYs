@@ -25,6 +25,15 @@ Cursor does not land on `main`.
 
 At least one of the three always stays on, so they cannot all be turned off.
 
+The gestures follow whatever key your keymap actually puts Super on, asked
+of the keymap the first time you press it rather than assumed from a
+keycode — so an `altwin:` option that moves Super does not leave them
+firing from the key it vacated. Super+K works either way.
+
+The overlay opens on the monitor you were working on and stays there. The
+dimming covers every screen; the card does not follow the pointer to
+another display.
+
 **Close**
 
 - Tap Super

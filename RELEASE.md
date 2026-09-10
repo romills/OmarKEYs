@@ -3,6 +3,60 @@
 Written when a finished **beta** is promoted into **main**. Cursor does not
 land on `main`.
 
+## 1.14.0.0 — 2026-09-10
+
+Promoted from `beta`. Cursor not included. First release carrying
+contributed changes: **Super detection** and **the per-monitor card** are
+[@curmorpheus](https://github.com/curmorpheus)'s work.
+
+- **The sidebar is three panels**: Omarchy, Active Apps and Options.
+  Omarchy and Active Apps are one choice rather than two trees — picking
+  either switches the board, and clicking anywhere inside a panel picks
+  it. Options is pinned to the bottom edge whatever height the trees
+  above it take.
+- **A workspace selector**, `Workspace 1 2 3 … ALL`, above the Active Apps
+  heading, replacing the workspace level added in 1.13.0.0: filtering to a
+  workspace scopes both the tree and the board to what is actually on it,
+  and ALL shows every app with its workspace beside each instance.
+- **Active Apps shows every kind at once**, each section tagged with the
+  kind whose sheet it came from, rather than one app at a time.
+- **A Track row in the version picker**, 1.0 and the 2.0 line being built
+  alongside it. It filters rather than switches, and opens on the track
+  the running build belongs to.
+- **Versions reaches other tracks.** The list is no longer filtered down
+  to the selected track: other tracks come after it, marked *switches
+  track*, so a build on 1.0 can move up to a tagged 2.0 release by
+  loading it and come back down the same way. `fetch` asks for tags
+  explicitly, so a release cut on an untracked branch still arrives.
+- **More room between things.** The row's columns are separated by named
+  gutters that scale with the Size slider, instead of the 4 and 8 pixels
+  that made a row read as one run of text; section cards are inset evenly
+  and the board's gaps step up to match.
+- Fixed: **Active Apps showed no keymaps at all** with more than one kind
+  of app open. The sheet queue advanced by assigning `FileView.path` from
+  inside that same FileView's `onLoaded`, which starts no second load — so
+  the first sheet landed, the queue stopped, and the board kept whatever
+  was already there.
+- Fixed: the kind tags were missing from those headings. `columns()`
+  rebuilds each section object field by field and dropped the qualifier,
+  leaving two kinds contributing a "Close tab" section apiece with nothing
+  to tell them apart.
+- Fixed: picking a workspace narrowed the tree but left the board on every
+  kind. The reload ran from the filter's own change handler and read a
+  binding whose only dependency was that same property, so it answered
+  with the pre-change value.
+- Fixed: **the gestures could fire from the wrong key.** The Super
+  keycodes were hardcoded, and `input.keyboard.key` reports XKB keycodes
+  rather than evdev ones, so two of the four named keypad keys; the other
+  two are Super only until an XKB option moves it. The fallback that
+  covered for this read the keyboard state from *before* the event, so
+  with Super held the next key pressed was taken for Super. The keymap is
+  asked at runtime now, once per keyboard.
+- Fixed: **the overlay appeared on every monitor** and its keyboard focus
+  followed `Hyprland.focusedMonitor`, so under `follow_mouse` it chased
+  the pointer to another display. The monitor it opened on is latched, and
+  the card finds its way back if an output blinks.
+
 ## 1.13.0.0 — 2026-09-09
 
 Promoted from `beta`. Cursor not included. First release numbered
