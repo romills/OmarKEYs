@@ -65,14 +65,20 @@ config provider -- so under sway alone the overlay comes up with no keymap.
 `wayvnc` attached to sway makes the nested session watchable live.
 
 Needs `sway`, `Hyprland`, `quickshell`, `hyprctl`, `grim`, `omarchy-shell`;
-`wtype` additionally for the gesture check. The script says which are
-missing and does nothing else.
+`ydotool` plus a writable `/dev/uinput` additionally for the gesture
+check. The script says which are missing and does nothing else.
+
+Gesture input has to be **uinput**, not the Wayland virtual-keyboard
+protocol. Measured against a live Hyprland, `wtype` moves nothing --
+neither a real keybind (Super+K) nor the Lua key hook fired, and it still
+exited 0. Hyprland does not feed `zwp_virtual_keyboard_v1` into bind or
+hook processing. `ydotool` writes to `/dev/uinput`, which the compositor
+cannot tell from hardware.
 
 Not yet run end to end -- written before the box it targets was reachable.
-Two things are unproven: whether `wtype`'s virtual keyboard reaches
-`hl.on("input.keyboard.key")` (if not, the Super gestures still cannot be
-tested anywhere), and whether a nested Hyprland loads Omarchy's Lua
-bindings without a login session.
+One thing is unproven: whether a nested Hyprland loads Omarchy's Lua
+bindings without a login session. Without those the overlay still comes
+up, but `dump-keymap` has no binds to read and the gestures never register.
 
 ## Channels
 

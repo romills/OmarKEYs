@@ -21,9 +21,8 @@
 #
 # STATUS: not yet run end to end. Written against homarchy before access to
 # it existed, so the shape is right but the details have not met a real box.
-# Two things are unverified and are called out where they matter: whether
-# wtype's virtual keyboard reaches hl.on("input.keyboard.key"), and whether
-# a nested Hyprland picks up Omarchy's Lua bindings without a login session.
+# One thing stays unverified and is called out where it matters: whether a
+# nested Hyprland picks up Omarchy's Lua bindings without a login session.
 set -uo pipefail
 
 RES="${RES:-2560x1440}"
@@ -56,7 +55,8 @@ preflight() {
     command -v "$t" >/dev/null 2>&1 || missing+=("$t")
   done
   [ ${#missing[@]} -eq 0 ] || die "not installed: ${missing[*]}"
-  command -v wtype >/dev/null 2>&1 || log "note: no wtype, gesture checks will skip"
+  command -v ydotool >/dev/null 2>&1 || log "note: no ydotool, gesture checks will skip"
+  [ -w /dev/uinput ] || log "note: /dev/uinput not writable, gesture checks will skip"
   [ -e /dev/dri/renderD128 ] || log "note: no render node, falling back to llvmpipe (slow)"
   log "preflight ok"
 }
@@ -167,17 +167,41 @@ run_checks() {
   omarchy-shell shell hide "$PLUGIN_ID" >/dev/null 2>&1
   sleep 1
 
-  # The one thing no amount of IPC can stand in for. hyprland.lua listens on
-  # input.keyboard.key; wtype speaks zwp_virtual_keyboard_v1. If Hyprland's
-  # Lua hook only sees physical devices this proves nothing, so treat a
-  # failure here as unknown rather than as a broken gesture.
-  if command -v wtype >/dev/null 2>&1; then
+  # The one thing no amount of IPC can stand in for: the gestures are the
+  # only path that runs entirely inside hyprland.lua.
+  #
+  # It has to be uinput, not the Wayland virtual-keyboard protocol. wtype
+  # speaks zwp_virtual_keyboard_v1, and measured against a live Hyprland it
+  # moves nothing: neither a real keybind (Super+K) nor the Lua key hook
+  # fired, and wtype still exited 0. Hyprland does not feed that protocol
+  # into bind or hook processing. ydotool writes to /dev/uinput instead, so
+  # the compositor cannot tell it from hardware. Do not "simplify" this back
+  # to wtype -- it fails silently, which is the worst way to fail.
+  #
+  # 125 is KEY_LEFTMETA in evdev codes, which is what uinput speaks. (The
+  # Lua side sees XKB codes, 8 higher -- that mismatch is exactly what PR #6
+  # fixed, and it is why this test is worth having.)
+  if command -v ydotool >/dev/null 2>&1 && [ -w /dev/uinput ]; then
     log "gesture: double-tap Super"
-    wtype -M logo -m logo 2>/dev/null
+    ydotool key 125:1 125:0 2>/dev/null
     sleep 0.15
-    wtype -M logo -m logo 2>/dev/null
+    ydotool key 125:1 125:0 2>/dev/null
     sleep 2
     shoot 04-gesture-double-tap
+    if hyprctl layers 2>/dev/null | grep -q romills-omarkeys; then
+      log "gesture: double-tap opened the overlay"
+    else
+      log "WARN: double-tap did not open the overlay"
+    fi
+    omarchy-shell shell hide "$PLUGIN_ID" >/dev/null 2>&1
+    sleep 1
+
+    log "gesture: hold Super"
+    ydotool key 125:1 2>/dev/null
+    sleep 6
+    ydotool key 125:0 2>/dev/null
+    sleep 1
+    shoot 05-gesture-hold
     omarchy-shell shell hide "$PLUGIN_ID" >/dev/null 2>&1
   fi
 }
