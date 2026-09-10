@@ -41,8 +41,43 @@ local function read_config()
   return cfg
 end
 
--- Linux KEY_LEFTMETA/RIGHTMETA and XKB Super_L/Super_R.
-local SUPER = { [125] = true, [126] = true, [133] = true, [134] = true }
+-- Which keycodes carry Super, learned at runtime; see learn_super. Nothing is
+-- assumed. A keycode is a physical position, and the XKB options that move
+-- Super rewrite only the keysym, so no table of positions is right for every
+-- keymap: whichever pair you hardcode, some layout has an ordinary key there.
+--
+-- This started as { 125, 126, 133, 134 }, and both halves were wrong.
+-- input.keyboard.key reports XKB keycodes, not evdev ones -- the event bridge
+-- pushes `keyEvent.keycode + 8` (LuaEventHandler.cpp) -- so 125 and 126 meant
+-- evdev 117 and 118, KP-equals and KP-plusminus, and a keypad key counted as
+-- Super. And 133/134 are the META pair only until an option vacates them:
+-- under altwin:swap_lalt_lwin the Win position types Alt_L, so holding Alt
+-- opened the overlay. Asking the keymap costs one probe per keyboard.
+local SUPER = {}
+
+-- Keycodes a keymap can carry Super on, so a probe is only ever scheduled for a
+-- key that could plausibly answer yes and ordinary typing never schedules one.
+-- XKB codes, with the evdev key each corresponds to:
+--   37 LEFTCTRL   64 LEFTALT    66 CAPSLOCK    105 RIGHTCTRL  107 SYSRQ
+--   108 RIGHTALT  133 LEFTMETA  134 RIGHTMETA  135 COMPOSE
+-- The META pair sits here rather than being assumed, so a layout that has moved
+-- Super off it fails the probe instead of firing the gestures from whatever key
+-- took its place. Between them these cover the stock options that relocate
+-- Super (altwin:swap_lalt_lwin, altwin:menu_win, altwin:alt_super_win,
+-- altwin:prtsc_rwin, ctrl:swap_lwin_lctl, caps:super) and Mac-layout boards
+-- whose CMD reports KEY_LEFTALT. A keymap that puts Super somewhere else
+-- entirely still works through Super+K, as it does today.
+local SUPER_CANDIDATES = {
+  [37] = true,
+  [64] = true,
+  [66] = true,
+  [105] = true,
+  [107] = true,
+  [108] = true,
+  [133] = true,
+  [134] = true,
+  [135] = true,
+}
 
 local st = {
   super_down = false,
@@ -74,6 +109,65 @@ local function named_super_down()
     down = hl.is_key_down("Super_L") or hl.is_key_down("Super_R")
   end)
   return down
+end
+
+local on_key
+
+-- Bumped by every key event for a key other than the one being probed, so a
+-- probe can tell whether anything else happened while it was pending.
+local key_seq = 0
+
+-- The keycode a probe is waiting on, if any. Events for that same key must not
+-- disturb it. An input method -- fcitx5, ibus -- sits between the keyboard and
+-- the compositor as its own virtual keyboard and re-emits what you press, so
+-- one physical press arrives here twice. Counting the echo as an intervening
+-- key aborted every probe and learned nothing, which is invisible until the
+-- table stops being seeded: with a hardcoded Super the duplicate is harmless,
+-- because both copies are already recognised.
+local probe_code = nil
+
+-- Hyprland runs the input.keyboard.key handler before the keybind manager
+-- records the press, so hl.is_key_down() read inside the handler describes the
+-- state *before* the current event. Read a tick later it describes the state
+-- the event produced, and the difference between the two is what says whether
+-- this keycode carries Super under the active keymap.
+--
+-- Attribution is the whole difficulty. "Some Super is held" is an aggregate: it
+-- cannot say which key put it there. So the probe only trusts its reading when
+-- nothing else happened in between --
+--
+--   * Super must not already be down when the key arrives (some other key,
+--     possibly one not learned yet, is holding it), and
+--   * no event for another key may land between scheduling and reading, or an
+--     interleaved press could be the real cause. An echo of the probed key
+--     itself is not another key, which matters because an input method
+--     delivers one; see probe_code above.
+--
+-- With nothing else touched across the window, a Super that is down now and was
+-- not down then can only have come from this key. That also keeps the replay
+-- below honest: nothing can have chorded, opened or closed the overlay while
+-- the probe was pending, so replaying the press cannot overwrite newer state.
+--
+-- Only a yes is cached, so a probe that lands between a press and its release
+-- can never demote a real Super key to an ordinary one.
+local function learn_super(code)
+  if SUPER[code] or not SUPER_CANDIDATES[code] or st.super_down or named_super_down() then
+    return
+  end
+  local seq = key_seq
+  probe_code = code
+  hl.timer(function()
+    probe_code = nil
+    if key_seq ~= seq or not named_super_down() then
+      return
+    end
+    SUPER[code] = true
+    -- Replay the press this probe was still deciding about.
+    local ok, err = pcall(on_key, code, 0, 1)
+    if not ok then
+      print("[OmarKEYS] super probe: " .. tostring(err))
+    end
+  end, { timeout = 1, type = "oneshot" })
 end
 
 local function grab_keys()
@@ -148,20 +242,19 @@ local function show_overlay()
   schedule_grab()
 end
 
-local function on_key(keycode, _, state)
+on_key = function(keycode, _, state)
+  local code = tonumber(keycode) or keycode
+  if code ~= probe_code then
+    key_seq = key_seq + 1
+  end
+
   if state == 2 then
     return
   end
 
-  local code = tonumber(keycode) or keycode
   local is_super = SUPER[code] == true
-  if not is_super then
-    local named = named_super_down()
-    if state == 1 and named and not st.super_down then
-      is_super = true
-    elseif state == 0 and st.super_down and not named then
-      is_super = true
-    end
+  if not is_super and state == 1 then
+    learn_super(code)
   end
 
   if state == 1 then
