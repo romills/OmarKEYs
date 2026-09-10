@@ -13,6 +13,17 @@ Item {
   property var shell: null
   property var manifest: null
   property bool opened: false
+  // Which monitor the overlay was opened on, latched at open and never
+  // rewritten. Bound live to Hyprland.focusedMonitor instead, the card would
+  // chase the pointer across displays under follow_mouse = 1: open it on one
+  // screen, glance at another, and the keymap jumps there.
+  property string openMonitor: ""
+  // Which monitor is actually showing the card. The same as openMonitor
+  // whenever that screen is present, and something else only while it is not.
+  // Keeping the wish and the fact apart is what lets the card come home: an
+  // output can vanish for a moment on a mode change or DPMS blink, and a single
+  // value would move away and then have nothing left to move back to.
+  property string cardMonitor: ""
   property bool grabKeys: false
   property string filterText: ""
   property var leftSections: []
@@ -201,6 +212,9 @@ Item {
     root.launching = false
     root.contextArmed = false
     root.contextToplevel = ToplevelManager.activeToplevel
+    root.openMonitor = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""
+    root.cardMonitor = ""
+    root.resolveCardMonitor()
     root.contextAddress = ""
     root.contextAddressLatched = false
     root.branchMenuOpen = false
@@ -864,6 +878,59 @@ Item {
         return
       if (ToplevelManager.activeToplevel !== root.contextToplevel)
         root.dismiss()
+    }
+  }
+
+  // Where the card belongs, in order of preference: the monitor it opened on,
+  // then wherever it is already, then the focused one, then anything at all.
+  // Without the last three it would sit on a screen that no longer exists --
+  // scrims up, no card, no keyboard grab -- and without the first it would
+  // never come home from a blip. Letting the binding read live focus instead of
+  // resolving here would do both jobs and bring the pointer-chasing back for
+  // the rest of the session.
+  function resolveCardMonitor() {
+    var screens = Quickshell.screens
+    var wanted = ""
+    for (var i = 0; i < screens.length && wanted === ""; i++) {
+      if (screens[i].name === root.openMonitor)
+        wanted = root.openMonitor
+    }
+    for (var j = 0; j < screens.length && wanted === ""; j++) {
+      if (screens[j].name === root.cardMonitor)
+        wanted = root.cardMonitor
+    }
+    var focused = Hyprland.focusedMonitor ? Hyprland.focusedMonitor.name : ""
+    for (var k = 0; k < screens.length && wanted === ""; k++) {
+      if (screens[k].name === focused)
+        wanted = focused
+    }
+    if (wanted === "" && screens.length > 0)
+      wanted = screens[0].name
+
+    if (wanted === root.cardMonitor)
+      return
+
+    root.cardMonitor = wanted
+    // The card has moved to a different panel, and nothing else will ask that
+    // panel's keyCatcher for focus: the grab follows the binding, but Qt item
+    // focus does not, so Escape and type-to-filter would be dead until the
+    // overlay was closed and opened again.
+    root.requestFocus()
+  }
+
+  Connections {
+    target: Quickshell
+    function onScreensChanged() {
+      if (root.opened)
+        root.resolveCardMonitor()
+    }
+  }
+
+  Connections {
+    target: Hyprland
+    function onFocusedMonitorChanged() {
+      if (root.opened)
+        root.resolveCardMonitor()
     }
   }
 
@@ -1871,7 +1938,7 @@ Item {
         color: "transparent"
         WlrLayershell.namespace: "romills-omarkeys"
         WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.keyboardFocus: (root.grabKeys && Hyprland.focusedMonitor && modelData && Hyprland.focusedMonitor.name === modelData.name)
+        WlrLayershell.keyboardFocus: (root.grabKeys && panel.hasKeyboard)
           ? WlrKeyboardFocus.Exclusive
           : WlrKeyboardFocus.None
         exclusionMode: ExclusionMode.Ignore
@@ -1884,8 +1951,8 @@ Item {
           Math.max(Style.space(900), Math.round(width * 0.92) - Style.gapsOut * 2))
         readonly property int cardHeight: Math.min(Style.space(1100),
           Math.max(Style.space(620), Math.round(height * 0.90) - Style.gapsOut * 2))
-        readonly property bool hasKeyboard: Hyprland.focusedMonitor && modelData
-          && Hyprland.focusedMonitor.name === modelData.name
+        readonly property bool hasKeyboard: !!modelData && root.cardMonitor !== ""
+          && root.cardMonitor === modelData.name
 
         function takeFocus() {
           if (root.opened && panel.hasKeyboard)
@@ -1926,8 +1993,18 @@ Item {
           onClicked: root.dismiss()
         }
 
+        // The scrim covers every screen; the card belongs to the one the
+        // overlay was opened on. A second display should not get a copy of the
+        // keymap nobody is looking at.
+        //
+        // Keeping a panel on every screen is what makes that safe. The overlay
+        // stays under the pointer wherever it goes, so crossing to another
+        // monitor does not activate a window there and trip the activeToplevel
+        // dismissal above. Explicit activation and output reconfiguration
+        // still can.
         BorderSurface {
           id: card
+          visible: panel.hasKeyboard
           width: panel.cardWidth
           height: panel.cardHeight
           radius: root.cornerRadius
