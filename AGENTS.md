@@ -48,6 +48,32 @@ hyprctl configerrors
 
 QML changes need `omarchy restart shell` (keepLoaded overlay).
 
+### Visual checks without taking over a desktop
+
+`tests/headless-session.sh` brings the overlay up in a compositor of its
+own and leaves screenshots behind, instead of restarting the shell on the
+machine someone is using:
+
+```
+headless sway (virtual output) -> nested Hyprland -> quickshell + plugin
+```
+
+Sway is the host, not the thing under test. OmarKEYS is Hyprland-specific
+-- the overlay reads Quickshell's `Hyprland` singleton, `dump-keymap`
+shells out to `hyprctl`, and the Super gestures live inside Hyprland's Lua
+config provider -- so under sway alone the overlay comes up with no keymap.
+`wayvnc` attached to sway makes the nested session watchable live.
+
+Needs `sway`, `Hyprland`, `quickshell`, `hyprctl`, `grim`, `omarchy-shell`;
+`wtype` additionally for the gesture check. The script says which are
+missing and does nothing else.
+
+Not yet run end to end -- written before the box it targets was reachable.
+Two things are unproven: whether `wtype`'s virtual keyboard reaches
+`hl.on("input.keyboard.key")` (if not, the Super gestures still cannot be
+tested anywhere), and whether a nested Hyprland loads Omarchy's Lua
+bindings without a login session.
+
 ## Channels
 
 One ladder, `develop-claude` → `develop` → `beta` → `main`. Each step is a
