@@ -161,6 +161,9 @@ Item {
   readonly property bool allModsAny: root.modSuper === "any" && root.modShift === "any" && root.modCtrl === "any" && root.modAlt === "any"
   readonly property bool allModsMust: root.modSuper === "must" && root.modShift === "must" && root.modCtrl === "must" && root.modAlt === "must"
   readonly property bool allModsHide: root.modSuper === "hide" && root.modShift === "hide" && root.modCtrl === "hide" && root.modAlt === "hide"
+  // What this build declares itself to be. The hash says which commit; this
+  // says which release, which is what a bug report needs.
+  readonly property string pluginVersion: (root.manifest && root.manifest.version) || ""
   readonly property string sourceDir: (root.manifest && root.manifest.__sourceDir)
     || ((Quickshell.env("HOME") || "") + "/.config/omarchy/plugins/io.github.romills.omarkeys")
   readonly property string configPath: (Quickshell.env("HOME") || "") + "/.config/omarchy/omarkeys.json"
@@ -217,7 +220,7 @@ Item {
     root.resolveCardMonitor()
     root.contextAddress = ""
     root.contextAddressLatched = false
-    root.branchMenuOpen = false
+    root.versionPopupOpen = false
     root.optionsMenuOpen = false
     root.filterCapturing = false
     root.selected = 0
@@ -508,7 +511,7 @@ Item {
   property int gitBehind: 0
   property string gitError: ""
   property bool gitBusy: false
-  property bool branchMenuOpen: false
+  property bool versionPopupOpen: false
   property bool optionsMenuOpen: false
   // Set when a switch/sync succeeds: the QML on disk changed, so the
   // shell has to restart for it to take effect.
@@ -680,16 +683,16 @@ Item {
   function toggleOptionsMenu() {
     root.optionsMenuOpen = !root.optionsMenuOpen
     if (root.optionsMenuOpen)
-      root.branchMenuOpen = false
+      root.versionPopupOpen = false
   }
 
-  function toggleBranchMenu() {
-    root.branchMenuOpen = !root.branchMenuOpen
-    if (root.branchMenuOpen)
+  function toggleVersionPopup() {
+    root.versionPopupOpen = !root.versionPopupOpen
+    if (root.versionPopupOpen)
       root.optionsMenuOpen = false
     // Opening is the moment the branch list matters, so refresh it then
     // rather than paying for git on every overlay open.
-    if (root.branchMenuOpen)
+    if (root.versionPopupOpen)
       root.refreshGitInfo()
     else
       root.gitError = ""
@@ -942,7 +945,7 @@ Item {
     root.contextArmed = false
     root.grabKeys = false
     root.opened = false
-    root.branchMenuOpen = false
+    root.versionPopupOpen = false
     root.optionsMenuOpen = false
     root.clearSolo()
   }
@@ -951,7 +954,7 @@ Item {
     root.contextArmed = false
     root.grabKeys = false
     root.opened = false
-    root.branchMenuOpen = false
+    root.versionPopupOpen = false
     root.optionsMenuOpen = false
     root.clearSolo()
     if (root.shell && typeof root.shell.hide === "function")
@@ -1839,8 +1842,8 @@ Item {
     }
 
     if (event.key === Qt.Key_Escape) {
-      if (root.branchMenuOpen || root.optionsMenuOpen) {
-        root.branchMenuOpen = false
+      if (root.versionPopupOpen || root.optionsMenuOpen) {
+        root.versionPopupOpen = false
         root.optionsMenuOpen = false
       }
       else if (root.filterText)
@@ -2110,7 +2113,7 @@ Item {
             // Then the channel, which is the part most people care about.
             // The branch name only adds information on Untested, where it
             // is not implied by the channel.
-            text: (root.branchMenuOpen ? "▾ " : "▴ ")
+            text: (root.versionPopupOpen ? "▾ " : "▴ ")
               + "Version: "
               + root.channelLabel(root.gitChannel)
               + (root.gitChannel === "version" && root.gitDescribe
@@ -2121,7 +2124,7 @@ Item {
               + (root.shellStale ? "  · restart to load" : "")
               + (root.gitUpdateAvailable ? " •" : "")
             color: root.gitUpdateAvailable ? root.chipFg : root.foreground
-            opacity: buildInfoArea.containsMouse || root.branchMenuOpen ? 0.9 : 0.35
+            opacity: buildInfoArea.containsMouse || root.versionPopupOpen ? 0.9 : 0.35
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
 
@@ -2130,7 +2133,7 @@ Item {
               anchors.fill: parent
               hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
-              onClicked: root.toggleBranchMenu()
+              onClicked: root.toggleVersionPopup()
             }
           }
 
@@ -2152,9 +2155,9 @@ Item {
               card.height - optionsMenu.anchors.bottomMargin - Style.space(20))
           }
 
-          KeymapBranchMenu {
+          KeymapVersionPopup {
             host: root
-            visible: root.branchMenuOpen
+            visible: root.versionPopupOpen
             anchors.right: parent.right
             anchors.bottom: buildInfo.top
             anchors.rightMargin: Style.spacing.sm

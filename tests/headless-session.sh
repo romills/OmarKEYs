@@ -159,10 +159,10 @@ run_checks() {
   sleep 2
   shoot 02-active-apps
 
-  omarchy-shell shell call "$PLUGIN_ID" toggleBranchMenu "" >/dev/null 2>&1
+  omarchy-shell shell call "$PLUGIN_ID" toggleVersionPopup "" >/dev/null 2>&1
   sleep 2
-  shoot 03-version-picker
-  omarchy-shell shell call "$PLUGIN_ID" toggleBranchMenu "" >/dev/null 2>&1
+  shoot 03-version-popup
+  omarchy-shell shell call "$PLUGIN_ID" toggleVersionPopup "" >/dev/null 2>&1
 
   omarchy-shell shell hide "$PLUGIN_ID" >/dev/null 2>&1
   sleep 1

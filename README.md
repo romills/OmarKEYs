@@ -209,42 +209,21 @@ reload the installer does, and it costs nothing else.
 **Restore defaults** (bottom right of the popup) resets every one of the
 above, plus hidden groups and apps and the search box.
 
-**Version** (bottom-right corner) reads `Version: Channel @ hash`, with a `•` when
-the channel you are on is behind its remote. The picker opens with what is loaded — **Updated**, **Branch** and
-**Hash**, one per line — beside a cloud button whose label says whether
-clicking it will *check* for updates or *update* to a newer version. Each
-other channel then says how it compares to what is loaded: *same*, or how
-many days *newer* or *older*.
+**Version** (bottom-right corner) reads `Version: Channel @ hash`. Click it
+and a popup says what is running: the release **Version**, when it was
+**Updated**, which **Channel**, and the commit **Hash** — the four things a
+bug report wants.
 
-Switching or syncing restarts the shell immediately, because a
-`keepLoaded` overlay keeps the QML it started with. If the checkout moves without a restart
-taking effect, the corner and the picker both say **restart to load** and
-name the commit actually running — otherwise a change that did arrive on
-disk looks like one that never came. Click it to switch channel or
-sync — see [Updating](#updating).
+It only reports. Picking and installing a different version is
+**OmarVerTester**'s job — a separate tool that can do that for any Omarchy
+plugin, rather than each plugin carrying its own copy of a package manager.
+This corner will open it once it exists.
 
-A **Track** row picks which release line the lists describe — 1.0, or the
-2.0 editable-keymaps line being built alongside it. It filters rather
-than switches: a channel appears under the track its branch is actually
-carrying, so 2.0 has no channel until it reaches one. The row opens on
-the track the running build belongs to.
-
-**Versions** is deliberately not filtered that way. The selected track's
-releases come first, then every other track's, each marked *switches
-track* — because a version list that hides releases makes them
-unreachable, and a tag is loadable on its own terms. So a build sitting
-on 1.0 can move up to 2.0 by loading a 2.0 release, without touching the
-Track row, and come back down the same way. A release only appears at all
-if its own tree carries the version marker; 2.0 keeping that marker is
-what keeps it reachable from here.
-
-Main, Beta and Nightly are each the tip of one branch (`main`, `beta`,
-`develop`), and each is one click. Those are the only destinations: the
-working branches were listed here once, but most of them predate the
-picker, so switching to one left you running code that could not fetch or
-switch back out. A checkout on any other branch is still named
-**Untested** in the corner, with the branch beside it, and any channel
-will get you out of it.
+One thing the popup still tells you, because nothing else would: if the
+checkout moves while the overlay is loaded, it says **restart to load** and
+names the commit actually running. A `keepLoaded` overlay keeps the QML it
+started with, so a change that did arrive on disk otherwise looks exactly
+like one that never came.
 
 Each group heading says which keymap it came from: the Omarchy mark for
 Omarchy's own binds, or the app's name in brackets when a sheet is loaded.
@@ -292,11 +271,10 @@ either path.
   commands of its own; it can only trigger what you already bound.
 - Rows whose action cannot be recovered are shown dimmed and do nothing, so
   the overlay never guesses at what a key might mean.
-- **Network:** only the branch picker, and only to the plugin's own git
-  remote, when you check for updates or sync. Nothing else phones home.
-- The picker can change which branch of this plugin is checked out and then
-  run `omarchy restart shell`. It never starts a second Quickshell process,
-  never force-pushes, never resets, and refuses to act on a dirty checkout.
+- **Network:** none from the overlay. The version popup reads local git
+  state only — which commit is checked out, and when. Nothing phones home.
+- The overlay does not change what is checked out. Switching versions moved
+  out to **OmarVerTester**; this plugin reports its version and stops there.
 - No root, no setuid, no system services, no remote build step.
 
 ## Install
@@ -364,19 +342,26 @@ cd ~/Work/omarkeys && git pull && ./install.sh
 
 ### Updating
 
-`omarchy plugin update` works on a normal (clone) install, and so does the
-overlay's own corner picker. They divide up like this:
+`omarchy plugin update` works on a normal (clone) install, and is the way
+to update on **Main**.
 
-| On channel | Use |
-|---|---|
-| Main | `omarchy plugin update`, or the picker |
-| Beta / Nightly / Untested | the picker's **Sync** |
+Off Main there is currently no in-overlay update. The corner used to switch
+and sync; that moved out to **OmarVerTester**, which does not exist yet, so
+until it does a Beta or Nightly checkout is updated from the plugin
+directory by hand:
 
-`omarchy plugin update` always fetches the default branch (`main`) and
-fast-forwards the checked-out branch onto it, so running it while on Beta
-leaves a branch named `beta` sitting on main's commit. Recover with
-`git checkout main && git branch -D beta` in the plugin directory; the next
-switch to Beta recreates it from `origin/beta`.
+```bash
+cd ~/.config/omarchy/plugins/io.github.romills.omarkeys
+git pull --ff-only
+omarchy restart shell
+```
+
+Do **not** reach for `omarchy plugin update` there. It always fetches the
+default branch (`main`) and fast-forwards whatever branch is checked out
+onto it, so running it on Beta *succeeds* and leaves a branch named `beta`
+sitting on main's commit — the label then lies about what you are running.
+Recover in the plugin directory with `git checkout main`, then
+`git branch -D beta`, then `git checkout -b beta origin/beta`.
 
 ### Working on OmarKEYS itself
 
@@ -417,7 +402,7 @@ user bindings file so Super+chords stay unmodified.
 | `KeymapSection.qml` / `KeymapRow.qml` | One topic card and one command row |
 | `KeymapHideButton.qml` | Show/Hide control, used at every level of the tree |
 | `KeymapOptionsMenu.qml` | Options popup: display, modifiers, opening gestures |
-| `KeymapBranchMenu.qml` | Corner channel picker: Main / Beta / Nightly / Untested |
+| `KeymapVersionPopup.qml` | Corner popup: which version is running |
 | `KeymapData.js` | Filter, catalog, shortcut parse, fallback list |
 | `dump-keymap` | Live Hyprland binds → JSON sections |
 | `run-shortcut` | Runs a row after the overlay closes: dispatches the bind's own action, or sends the chord for app-sheet rows |

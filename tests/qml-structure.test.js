@@ -90,22 +90,8 @@ test("every QML file closes every brace it opens", () => {
   }
 })
 
-// The Versions list is the way up into a new track: 2.0 is reachable by
-// loading a release, not only by flipping the Track pill. It got there by
-// dropping a per-group track filter, and a filter put back on that model
-// would quietly strand anyone on 1.0 again -- with the pill as the sole
-// route, which is exactly what this was meant to stop being true.
-test("the version list is not filtered back down to one track", () => {
-  const src = fs.readFileSync(path.join(root, "KeymapBranchMenu.qml"), "utf8")
-  assert.ok(
-    src.includes("model: menu.versionGroups"),
-    "the version tree should render every group, ordered, not host.versionTree filtered"
-  )
-  const filtered = src
-    .split("\n")
-    .filter((l) => /visible:/.test(l) && /trackOf\(/.test(l) && /menu\.track/.test(l))
-  assert.deepEqual(
-    filtered, [],
-    "a version group must not be hidden for belonging to another track:\n" + filtered.join("\n")
-  )
-})
+// The version list, the channel tabs and the track row moved out of
+// OmarKEYS into OmarVerTester -- picking and installing versions of a
+// plugin is that tool's job, not a keymap overlay's. The test that pinned
+// the cross-track version list went with them: there is no list here to
+// filter any more.
