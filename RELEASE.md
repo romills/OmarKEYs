@@ -3,6 +3,29 @@
 Written when a finished **beta** is promoted into **main**. Cursor does not
 land on `main`.
 
+## 1.15.0.0 — 2026-09-10
+
+Promoted from `beta`. Cursor not included. A packaging and documentation
+release: nothing about the overlay itself changed.
+
+- **`AGENTS.md` is no longer part of the plugin.** The marketplace does not
+  permit agent-control files in a distributed payload -- a file like that
+  inside an installed tree can inject repository-supplied instructions into
+  any coding agent working in or above the plugin directory. There was
+  nothing to exclude it from either, since this repo *is* what gets
+  installed, so it now lives outside the repo entirely.
+- **The installer says exactly what it touches.** README lists every path
+  it writes, states that it needs no root and that its only network access
+  is cloning this repo, and spells out that `bindings.lua` is backed up
+  before it is edited, that nothing is ever deleted -- an existing install
+  is moved aside, not overwritten -- and that Super+K is the one existing
+  binding claimed, only while its toggle is on.
+- For contributors: `tests/headless-session.sh` brings the overlay up in a
+  compositor of its own -- headless sway holding a nested Hyprland -- so
+  visual checks stop requiring someone's live desktop. Gesture input there
+  has to go through `ydotool`/uinput; the Wayland virtual-keyboard protocol
+  moves nothing in Hyprland, silently.
+
 ## 1.14.0.0 — 2026-09-10
 
 Promoted from `beta`. Cursor not included. First release carrying
