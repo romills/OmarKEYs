@@ -3,6 +3,32 @@
 Written when a finished **beta** is promoted into **main**. Cursor does not
 land on `main`.
 
+## 1.16.0.0 — 2026-09-11
+
+Promoted from `beta`. Cursor not included.
+
+- **The corner reports a version; it no longer switches one.** Clicking it
+  shows the release and the plugin id — what a bug report needs to name
+  which build it is about. The channel picker that used to live there
+  (Channel and Versions tabs, the 1.0/2.0 track row, the tree of tagged
+  releases, the cloud update button) is moving to **OmarVerTester**, a tool
+  for picking and installing versions of any Omarchy plugin, rather than
+  each plugin carrying its own copy of a package manager.
+- **The overlay makes no network access at all**, and executes no git.
+  `plugin-git` is gone. The version comes from the manifest, which also
+  means it works whatever shape the install is — a plugin directory is not
+  always a git clone.
+
+Gone with the picker, deliberately: the channel name and commit hash in the
+corner, and the **restart to load** warning that noticed the checkout moving
+under a running shell. That warning existed because the picker could move
+the checkout from inside the overlay, and nothing here does that now.
+OmarVerTester owns all of it; this corner will ask that tool for it once it
+exists.
+
+Updating on Main is `omarchy plugin update`. Off Main, until OmarVerTester
+lands, pull in the plugin directory by hand — see the README.
+
 ## 1.15.0.0 — 2026-09-10
 
 Promoted from `beta`. Cursor not included. A packaging and documentation

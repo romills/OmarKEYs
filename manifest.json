@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.romills.omarkeys",
   "name": "OmarKEYS",
-  "version": "1.15.0.0",
+  "version": "1.16.0.0",
   "author": "romills",
   "license": "MIT",
   "description": "OmarKEYS, a Super+K alternative: double-tap Super, hold Super (default 5s), or Super+K to show the live Hyprland keymap as a tree of topic areas and running apps. Type to search, arrows move the highlight and Ctrl+1–9 jump to a group, double-click or Enter runs the highlighted shortcut. Key display, sorting, modifier filters and the opening gestures (Super+K included) are all configurable on the overlay.",
