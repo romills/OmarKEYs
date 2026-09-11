@@ -226,7 +226,6 @@ Item {
     root.selected = 0
     root.applyConfigToData()
     root.refreshKeymap()
-    root.refreshGitInfo()
     root.rebuild()
     root.opened = true
   }
@@ -503,182 +502,8 @@ Item {
     }
   }
 
-  property string gitBranch: ""
-  property string gitHash: ""
-  property var gitBranches: []
-  property bool gitDirty: false
-  property bool gitUpdateAvailable: false
-  property int gitBehind: 0
-  property string gitError: ""
-  property bool gitBusy: false
   property bool versionPopupOpen: false
   property bool optionsMenuOpen: false
-  // Set when a switch/sync succeeds: the QML on disk changed, so the
-  // shell has to restart for it to take effect.
-  property bool gitReloadPending: false
-  // The commit this shell was loaded from, latched the first time git
-  // reports one. Everything else about the version is read live from a
-  // subprocess, so without this the overlay can report a commit it is not
-  // actually running -- which is exactly what a restart racing a switch
-  // leaves behind.
-  property string loadedHash: ""
-  readonly property bool shellStale: root.loadedHash !== ""
-    && root.gitHash !== "" && root.loadedHash !== root.gitHash
-
-  function refreshGitInfo() {
-    root.runGit(["status"], false)
-  }
-
-  // Release channels. Main and Beta are the two choices most people need;
-  // Nightly is the escape hatch that opens up every working branch.
-  readonly property string mainBranch: "main"
-  readonly property string betaBranch: "beta"
-  readonly property string nightlyBranch: "develop"
-
-  function channelFor(branch) {
-    if (root.gitDetached)
-      return "version"
-    if (branch === root.mainBranch)
-      return "main"
-    if (branch === root.betaBranch)
-      return "beta"
-    if (branch === root.nightlyBranch)
-      return "nightly"
-    return "untested"
-  }
-
-  readonly property string gitChannel: root.channelFor(root.gitBranch)
-
-  // When the loaded commit was made, and the same for every branch you
-  // could switch to, so the picker can say how far apart they are.
-  property string gitDate: ""
-  // Released versions that can be loaded, and whether we are sitting on
-  // one. A tag checkout is detached, so the branch name is "HEAD" and the
-  // tag is the only thing that names where you are.
-  property var gitVersions: []
-  // Each channel's declared version, so a track can be told from what a
-  // branch actually carries rather than from what it is called.
-  property var gitChannelVersions: ({})
-
-  // The release track a version string belongs to: the major number.
-  // 1.13.1.0 is track 1, 2.0.0.0 is track 2.
-  function trackOf(version) {
-    var first = String(version || "").split(".")[0]
-    return first || ""
-  }
-
-  // The track this build is actually running, so the picker opens on it
-  // rather than on a hardcoded 1. Detached on a tag, the tag names the
-  // version; on a branch, the branch's manifest does.
-  function currentTrack() {
-    if (root.gitDetached && root.gitDescribe)
-      return root.trackOf(String(root.gitDescribe).replace(/^v/, "")) || "1"
-    return root.channelTrack(root.gitChannel) || "1"
-  }
-
-  function channelTrack(channel) {
-    var branch = root.branchForChannel(channel)
-    var map = root.gitChannelVersions || ({})
-    return branch ? root.trackOf(map[branch] || "") : ""
-  }
-  property bool gitDetached: false
-  property string gitDescribe: ""
-  property double gitEpoch: 0
-  property var gitCommits: ({})
-
-  // Releases grouped by their main number, newest first. A flat list of
-  // tags stops reading as anything once there are more than a handful;
-  // 1.<main> is the only level tags exist at, since only beta cuts and
-  // main releases are tagged.
-  readonly property var versionTree: {
-    var list = root.gitVersions || []
-    var order = []
-    var byMain = ({})
-    for (var i = 0; i < list.length; i++) {
-      var v = list[i]
-      var parts = String(v.version || "").split(".")
-      var main = parts.length >= 2 ? parts[0] + "." + parts[1] : "other"
-      if (!byMain[main]) {
-        byMain[main] = []
-        order.push(main)
-      }
-      byMain[main].push(v)
-    }
-    var out = []
-    for (var g = 0; g < order.length; g++)
-      out.push({ title: order[g], releases: byMain[order[g]] })
-    return out
-  }
-
-  function branchForChannel(channel) {
-    if (channel === "main")
-      return root.mainBranch
-    if (channel === "beta")
-      return root.betaBranch
-    if (channel === "nightly")
-      return root.nightlyBranch
-    return ""
-  }
-
-  // "same" / "3 days newer" / "1 day older", against the loaded commit.
-  // Sameness is by commit, not by clock: two branches can share a date and
-  // still be different code, and a fast-forward gives them the same date
-  // as well as the same commit.
-  function versionAge(branch) {
-    var info = branch ? (root.gitCommits || ({}))[branch] : null
-    if (!info || !root.gitEpoch)
-      return ""
-    if (info.hash && root.gitHash && info.hash === root.gitHash)
-      return "same"
-    var diff = Number(info.epoch) - root.gitEpoch
-    if (!diff)
-      return "same date"
-    var days = Math.floor(Math.abs(diff) / 86400)
-    var span = days < 1 ? "hours" : (days === 1 ? "1 day" : days + " days")
-    return span + (diff > 0 ? " newer" : " older")
-  }
-
-  function versionDate(branch) {
-    var info = branch ? (root.gitCommits || ({}))[branch] : null
-    if (!info || !info.epoch)
-      return ""
-    return Qt.formatDate(new Date(Number(info.epoch) * 1000), "yyyy-MM-dd")
-  }
-
-  function channelLabel(channel) {
-    if (channel === "main")
-      return "Main"
-    if (channel === "beta")
-      return "Beta"
-    if (channel === "nightly")
-      return "Nightly"
-    if (channel === "version")
-      return "Version"
-    return "Untested"
-  }
-
-  // Each of the three channels is the tip of one branch, so switching is
-  // one click. "Untested" is not a channel you can pick -- it is what a
-  // checkout on any other branch is called, so the corner can name it
-  // rather than pretend it is one of the three.
-  // A tag, not a branch: plugin-git checks the tree carries the version
-  // marker before loading it, so a build with no picker in it can never be
-  // the thing you land on.
-  function loadVersion(tag) {
-    if (!tag)
-      return
-    root.gitError = ""
-    root.switchBranch(tag)
-  }
-
-  function switchChannel(channel) {
-    if (channel === "main")
-      root.switchBranch(root.mainBranch)
-    else if (channel === "beta")
-      root.switchBranch(root.betaBranch)
-    else if (channel === "nightly")
-      root.switchBranch(root.nightlyBranch)
-  }
 
   function toggleOptionsMenu() {
     root.optionsMenuOpen = !root.optionsMenuOpen
@@ -690,89 +515,19 @@ Item {
     root.versionPopupOpen = !root.versionPopupOpen
     if (root.versionPopupOpen)
       root.optionsMenuOpen = false
-    // Opening is the moment the branch list matters, so refresh it then
-    // rather than paying for git on every overlay open.
-    if (root.versionPopupOpen)
-      root.refreshGitInfo()
-    else
-      root.gitError = ""
   }
 
-  function checkForUpdates() {
-    root.gitError = ""
-    root.runGit(["fetch"], false)
-  }
-
-  function switchBranch(name) {
-    if (!name)
-      return
-    if (name === root.gitBranch && !root.gitDetached)
-      return
-    root.gitError = ""
-    root.runGit(["switch", String(name)], true)
-  }
-
-  function syncBranch() {
-    root.gitError = ""
-    root.runGit(["sync"], true)
-  }
-
-  function runGit(args, reloadOnSuccess) {
-    if (root.gitBusy)
-      return
-    root.gitBusy = true
-    root.gitReloadPending = !!reloadOnSuccess
-    gitProc.command = [root.sourceDir + "/plugin-git"].concat(args)
-    gitProc.running = true
-  }
-
-  function applyGitPayload(text) {
-    var data = null
-    try {
-      data = JSON.parse(text)
-    } catch (e) {
-      root.gitError = "could not read git status"
-      return
-    }
-    if (!data)
-      return
-    root.gitBranch = data.branch || ""
-    root.gitHash = data.hash || ""
-    root.gitBranches = data.branches || []
-    root.gitDate = data.date || ""
-    root.gitVersions = data.versions || []
-    root.gitChannelVersions = data.channelVersions || ({})
-    root.gitDetached = data.detached === true
-    root.gitDescribe = data.describe || ""
-    root.gitEpoch = Number(data.epoch) || 0
-    root.gitCommits = data.commits || ({})
-    root.gitDirty = data.dirty === true
-    root.gitBehind = data.behind || 0
-    root.gitUpdateAvailable = data.updateAvailable === true
-    // syncError is soft: the switch itself succeeded, only the follow-up
-    // fast-forward did not, so it must not block the reload below.
-    root.gitError = data.error || data.fetchError || data.syncError || ""
-    // First hash seen wins: this is the tree the running QML came from.
-    if (!root.loadedHash && root.gitHash)
-      root.loadedHash = root.gitHash
-    // Only a clean switch/sync warrants restarting the shell; a refusal
-    // leaves the checkout untouched, so there is nothing to reload.
-    if (root.gitReloadPending && data.ok && !data.error)
-      root.restartShell()
-    root.gitReloadPending = false
-  }
-
-  // Immediate, and guarded only against a double-fire in the same moment.
+  // The corner reads the manifest and nothing else. It used to shell out
+  // to plugin-git for the branch, commit and date, which meant the overlay
+  // carried code that could fetch and check out a remote -- a package
+  // manager's privileges, for a label. Which version is installed is a
+  // fact the install already states.
   //
-  // This was briefly deferred behind a timer, to stop rapid channel
-  // switches launching restarts that raced the checkouts they were meant
-  // to follow. That was the wrong fix twice over: the switches in that
-  // incident were seconds apart, far outside any debounce window, and
-  // deferring the call added a way for the restart not to happen at all
-  // -- which is exactly what happened on the first sync afterwards.
-  //
-  // What actually protects against a stale shell is noticing one:
-  // loadedHash against gitHash, above.
+  // OmarVerTester owns everything the git read used to feed: switching
+  // channels, loading a release, and noticing that the checkout moved
+  // under a running shell. When it exists this corner can ask it, and say
+  // more again for anyone who has it.
+
   property double lastRestartAt: 0
 
   function restartShell() {
@@ -786,26 +541,9 @@ Item {
     Quickshell.execDetached(["bash", "-lc", "omarchy restart shell"])
   }
 
-  Process {
-    id: gitProc
-    command: [root.sourceDir + "/plugin-git", "status"]
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        root.gitBusy = false
-        root.applyGitPayload(text)
-      }
-    }
-    onExited: function(code) {
-      root.gitBusy = false
-      if (code !== 0 && !root.gitError)
-        root.gitError = "plugin-git failed (" + code + ")"
-    }
-  }
 
   Component.onCompleted: {
     root.refreshKeymap()
-    root.refreshGitInfo()
   }
 
   Timer {
@@ -2104,26 +1842,14 @@ Item {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             anchors.margins: Style.spacing.sm
-            visible: !!(root.gitBranch || root.gitHash)
+            visible: root.pluginVersion.length > 0
             textFormat: Text.PlainText
             // Says what it is before it says which one. Unlabelled, a bare
-            // "Nightly @ 21d223c" in a corner reads as a build stamp
-            // rather than something you can click and change.
-            //
-            // Then the channel, which is the part most people care about.
-            // The branch name only adds information on Untested, where it
-            // is not implied by the channel.
+            // "1.15.0.0" in a corner reads as a build stamp rather than
+            // something you can click.
             text: (root.versionPopupOpen ? "▾ " : "▴ ")
-              + "Version: "
-              + root.channelLabel(root.gitChannel)
-              + (root.gitChannel === "version" && root.gitDescribe
-                ? " · " + root.gitDescribe
-                : (root.gitChannel === "untested" && root.gitBranch
-                  ? " · " + root.gitBranch : ""))
-              + (root.gitHash ? " @ " + root.gitHash : "")
-              + (root.shellStale ? "  · restart to load" : "")
-              + (root.gitUpdateAvailable ? " •" : "")
-            color: root.gitUpdateAvailable ? root.chipFg : root.foreground
+              + "Version: " + root.pluginVersion
+            color: root.foreground
             opacity: buildInfoArea.containsMouse || root.versionPopupOpen ? 0.9 : 0.35
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption

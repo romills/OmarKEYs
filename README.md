@@ -4,16 +4,15 @@ A Super+K alternative for [Omarchy](https://omarchy.org/). Topic-organized
 keymap overlay, summoned without eating Super+other shortcuts.
 
 Repo: https://github.com/romills/OmarKEYs. Work climbs one ladder —
-`develop-claude` → `develop` → `beta` → `main` — and each channel in the
-overlay's corner picker maps to one of its branches:
+`develop-claude` → `develop` → `beta` → `main`:
 
 | Branch | Channel | Owner |
 |---|---|---|
 | `main` | Main | Claude promotes a finished beta and writes [RELEASE.md](RELEASE.md) |
 | `beta` | Beta | Claude |
 | `develop` | Nightly | Claude integrates; Cursor opens PRs into it from `develop-cursor` |
-| `develop-claude` | not in the picker | Claude's working branch |
-| `develop-cursor` | not in the picker | Cursor's working branch |
+| `develop-claude` | — | Claude's working branch |
+| `develop-cursor` | — | Cursor's working branch |
 
 Cursor does not land on `main`.
 
@@ -209,21 +208,16 @@ reload the installer does, and it costs nothing else.
 **Restore defaults** (bottom right of the popup) resets every one of the
 above, plus hidden groups and apps and the search box.
 
-**Version** (bottom-right corner) reads `Version: Channel @ hash`. Click it
-and a popup says what is running: the release **Version**, when it was
-**Updated**, which **Channel**, and the commit **Hash** — the four things a
-bug report wants.
+**Version** (bottom-right corner) reads `Version: 1.15.0.0`. Click it and a
+popup shows that version and the plugin id — what a bug report needs to name
+which build it is about.
 
-It only reports. Picking and installing a different version is
-**OmarVerTester**'s job — a separate tool that can do that for any Omarchy
-plugin, rather than each plugin carrying its own copy of a package manager.
-This corner will open it once it exists.
-
-One thing the popup still tells you, because nothing else would: if the
-checkout moves while the overlay is loaded, it says **restart to load** and
-names the commit actually running. A `keepLoaded` overlay keeps the QML it
-started with, so a change that did arrive on disk otherwise looks exactly
-like one that never came.
+It reads the manifest and nothing else, so it works whatever shape the
+install is; not every plugin directory is a git clone. Picking and
+installing a different version is **OmarVerTester**'s job — a separate tool
+that does that for any Omarchy plugin, rather than each plugin carrying its
+own copy of a package manager. This corner will find that tool and show
+what it knows once it exists.
 
 Each group heading says which keymap it came from: the Omarchy mark for
 Omarchy's own binds, or the app's name in brackets when a sheet is loaded.
@@ -244,9 +238,9 @@ your user's permissions, so here is everything OmarKEYS reaches for.
 | Command | Used for |
 |---|---|
 | `hyprctl` | Read binds and clients; dispatch the action of a row you run; reload the config when Super+K is toggled |
-| `python3` | `dump-keymap`, `apply-edit`, `plugin-git`, and JSON quoting in `run-shortcut` |
+| `python3` | `dump-keymap`, `apply-edit`, and JSON quoting in `run-shortcut` |
 | `lua` | Read the real action of each bind out of your Hyprland Lua config |
-| `git` | Branch picker (status, fetch, checkout, fast-forward) and the edit history |
+| `git` | The edit history behind Restore default |
 | `bash` | `run-shortcut`, `install.sh`, and invoking `omarchy restart shell` |
 | `omarchy`, `omarchy-shell` | Enable/disable the plugin, rescan plugins, restart the shell |
 
@@ -271,10 +265,10 @@ either path.
   commands of its own; it can only trigger what you already bound.
 - Rows whose action cannot be recovered are shown dimmed and do nothing, so
   the overlay never guesses at what a key might mean.
-- **Network:** none from the overlay. The version popup reads local git
-  state only — which commit is checked out, and when. Nothing phones home.
-- The overlay does not change what is checked out. Switching versions moved
-  out to **OmarVerTester**; this plugin reports its version and stops there.
+- **Network:** none. The overlay never contacts anything.
+- The overlay does not fetch, check out, or change what is installed.
+  Switching versions moved out to **OmarVerTester**; this plugin reads its
+  own manifest and stops there.
 - No root, no setuid, no system services, no remote build step.
 
 ## Install
@@ -305,7 +299,7 @@ cloning this repository from the origin your checkout already points at.
 |---|---|
 | `~/.config/omarchy/plugins/io.github.romills.omarkeys/` | Created, as a `git clone` of this repo on the branch you ran the installer from. With `--dev`, a symlink to your checkout instead. |
 | `~/.config/hypr/bindings.lua` | **Copied to `bindings.lua.bak.<epoch>` first**, then any previous OmarKEYS block is stripped and one `dofile(...)` line appended under an `-- OmarKEYS` marker. Nothing else in the file is altered. |
-| `run-shortcut`, `dump-keymap`, `apply-edit`, `plugin-git` | Made executable, in your checkout. |
+| `run-shortcut`, `dump-keymap`, `apply-edit` | Made executable, in your checkout. |
 | Omarchy plugin registry | `omarchy plugin enable io.github.romills.omarkeys`; the pre-rename id `romills.omarkeys` is disabled if present. |
 | Hyprland | `hyprctl reload`, then `hyprctl configerrors` — a non-empty result fails the install rather than leaving a broken config. |
 
@@ -407,7 +401,6 @@ user bindings file so Super+chords stay unmodified.
 | `dump-keymap` | Live Hyprland binds → JSON sections |
 | `run-shortcut` | Runs a row after the overlay closes: dispatches the bind's own action, or sends the chord for app-sheet rows |
 | `apply-edit` | Remap a chord into `omarkeys-edits.lua` (no UI yet) |
-| `plugin-git` | Channel picker's git backend: status, fetch, switch, sync |
 | `install.sh` | Install the plugin and wire the Hyprland gestures |
 | `sheets/` | Bundled app keymaps (Chromium, Ghostty, Nautilus) |
 | `tests/` | `node --test tests/*.test.js` |

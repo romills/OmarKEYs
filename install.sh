@@ -97,7 +97,7 @@ if (( UNINSTALL )); then
 fi
 
 mkdir -p "$(dirname "$PLUGIN_DIR")"
-chmod +x "$ROOT/run-shortcut" "$ROOT/dump-keymap" "$ROOT/apply-edit" "$ROOT/plugin-git"
+chmod +x "$ROOT/run-shortcut" "$ROOT/dump-keymap" "$ROOT/apply-edit"
 
 if (( DEV )); then
   if [[ -e $PLUGIN_DIR && ! -L $PLUGIN_DIR ]]; then
