@@ -3,6 +3,19 @@
 Written when a finished **beta** is promoted into **main**. Cursor does not
 land on `main`.
 
+## 1.17.0.0 — 2026-10-17
+
+Promoted from `beta`. Cursor not included.
+
+- **A preview image for the marketplace listing.** `preview.png` at the repo
+  root is what the marketplace builds its card and detail images from; without
+  one the listing used a generated fallback tile. It is a real screenshot of
+  this version, taken on an empty workspace so no window titles appear, and
+  grouped by topic so the cards show Omarchy's own bindings rather than any
+  one machine's custom ones.
+
+Nothing about the overlay changed.
+
 ## 1.16.0.0 — 2026-09-11
 
 Promoted from `beta`. Cursor not included.
